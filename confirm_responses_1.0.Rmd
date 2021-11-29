@@ -10,7 +10,7 @@ library('data.table') # data manipulation
 library('here')       # file logistics
 library('corrplot')   # visualization
 library('Hmisc')      # visualization
-library("ggplot2")
+library("ggplot2")    # visualization
 library('dplyr')      # data manipulation
 library('psych')      # factor analysis and reliability
 ```
@@ -42,27 +42,61 @@ questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
 
 ```{r}
 #create a dataframe to work with
-working_dt <- all_dt[status=='TIMED-OUT', ]
+finished_dt <- all_dt[Finished=='True', ]
+
+# 8 participants finished, and timed out
+finished_timed_out_dt <- all_dt[status=='TIMED-OUT' & Finished=='True', ]
+
+# 9 participants did not finish, and timed out - perhaps found in partial responses
+unfinished_timed_out_dt <- all_dt[is.na(Finished) & status=='TIMED-OUT', ]
 ```
 
 ```{r}
-columns <- c("Duration (in seconds)", "PROLIFIC_PID", "time_taken", "Sex", "age")
-overall_time_taken_dt <- working_dt %>% select(columns)
+#looking at the difference between Qualtrics time estimation and prolific
+finished_dt$duration <- as.numeric(finished_dt$`Duration (in seconds)`)
+finished_dt$time_diff <- finished_dt$time_taken - finished_dt$duration
 
-time_taken_plot
-  ggplot(., aes(x=`Duration (in seconds)`, y=age, color=Sex)) +
+#note columns to select
+columns <- c("duration", "PROLIFIC_PID", "time_taken", "Sex", "age")
+
+#plot duration by age, separated by sex
+duration_plot <- finished_dt %>% select(columns) %>%
+  ggplot(., aes(x=duration, y=age, color=Sex)) +
   geom_point()
+duration_plot
+
+#two observations took longer than 9000 seconds - responses look legit
+#5fbc7c8b02bb0c14bfbe08ef
+#5fd15934025b991384ef1116
+finished_dt[duration > 9000,]
+
+time_taken_plot <- finished_dt %>% select(columns) %>%
+  ggplot(., aes(x=time_taken, y=age, color=Sex)) +
+  geom_point()
+
+#looks like it is returned after a very long time once it times out
+finished_dt[time_taken > 7000,]
 ```
 
 
 ```{r}
-suspicious <- c("5f3e5e066dfaa70464615447", "61164fcd0209fe50694212f2")
+#these had long stretches with the same value, but they look legit
+suspicious_rows <- c(38, 72, 123, 132, 162, 176, 427, 479, 485)
+suspicious_dt <- all_dt[suspicious_rows, ]
 
-suspicious_dt <- working_dt[working_dt$PROLIFIC_PID %in% suspicious]
 
-responses_dt[32,]
+# this is the one that was revoked
+all_dt[57, ]
 ```
 
+
+```{r}
+messages <- c("5f3e5e066dfaa70464615447", "61164fcd0209fe50694212f2", "55bb74f1fdf99b1519ef4762", "5fd15934025b991384ef1116", "5bf412a805d7260001f5247f", "5de7c6d448241d73d36ceaef", "5c6f1e080b99a000018cc53b", "5dde21012a30acd8ada645ec", "6158591c0aface73c971cd2b", "614ee4836d0150e0a1865e6e", "6155b46b4b82aa7811ffaabd")
+
+#messages <- c("5bf412a805d7260001f5247f ")
+
+messages_dt <- all_dt[all_dt$PROLIFIC_PID %in% messages]
+```
 
 
 ```{r}
