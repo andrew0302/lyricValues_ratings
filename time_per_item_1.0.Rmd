@@ -1,0 +1,72 @@
+---
+title: "time_per_item_1.0"
+author: "andrew demetriou"
+date: "11/29/2021"
+---
+
+
+```{r setup, include=FALSE}
+library('data.table') # data manipulation
+library('here')       # file logistics
+library("ggplot2")    # visualization
+library('dplyr')      # data manipulation
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# create a list with all of the files
+data_files <- list.files(data_file_path)
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+
+# remove junk on first two rows
+responses_dt <- responses_dt[3:.N]
+
+# get question wording:
+questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+```
+
+
+```{r}
+clicks_dt <- responses_dt[`Participant Consent`=='agree', ]
+```
+
+```{r}
+# remove spaces from column names
+setnames(clicks_dt, make.names(colnames(clicks_dt), unique=TRUE))
+
+# create list of First Click columns to represent each song
+songs <- grepl("First.Click", colnames(clicks_dt)) 
+
+# remove extra text
+song_IDs <- colnames(clicks_dt[, ..songs]) %>%
+  gsub("X", "", .) %>%
+  gsub(".m_First.Click", "", .)
+song_IDs[-1]
+```
+```{r}
+# logical vector with all the 'click' columns and response ID
+clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(clicks_dt)) 
+
+clicks_dt[, ..clicks][, lapply(.SD, as.numeric)][, .(
+  lyric_prefs = mean(Lyric_questions_time_Last.Click - Lyric_questions_time_First.Click, na.rm=TRUE) / 60,
+  X4116102 = mean(X4116102.m_Last.Click - X4116102.m_First.Click, na.rm=TRUE) / 60, 
+  X80257632 = mean(X80257632.m_Last.Click - X80257632.m_First.Click, na.rm=TRUE) / 60
+)] 
+
+
+
+clicks_dt[, ..clicks][, lapply(.SD, as.numeric)][, .(
+  lyric_prefs = mean(Lyric_questions_time_Last.Click - Lyric_questions_time_First.Click, na.rm=TRUE) / 60, 
+  TRKMVRW128F4292AF7 = mean(TRKMVRW128F4292AF7.m_Last.Click - TRKMVRW128F4292AF7.m_First.Click, na.rm=TRUE) / 60, 
+  TRAKHVT128F4299C0C = mean(TRAKHVT128F4299C0C.m_Last.Click - TRAKHVT128F4299C0C.m_First.Click, na.rm=TRUE) / 60, 
+  TRIOIJF12903CF5B9D = mean(TRIOIJF12903CF5B9D.m_Last.Click - TRIOIJF12903CF5B9D.m_First.Click, na.rm=TRUE) / 60, 
+  TRFUXHO128F930BBFE = mean(TRFUXHO128F930BBFE.m_Last.Click - TRFUXHO128F930BBFE.m_First.Click, na.rm=TRUE) / 60
+)]
+```
+
+
+
