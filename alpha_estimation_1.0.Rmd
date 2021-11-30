@@ -61,7 +61,7 @@ songs <- gsub(pattern[2], "", songs)
 songs <- gsub(pattern[1], "", songs) 
 
 #create new variable for song_ID
-t$item_ID <- songs
+t$song_ID <- songs
 ```
 
 ```{r}
