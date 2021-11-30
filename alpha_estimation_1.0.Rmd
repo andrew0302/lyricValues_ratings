@@ -8,11 +8,8 @@ date: "11/25/2021"
 ```{r setup, include=FALSE}
 library('data.table') # data manipulation
 library('here')       # file logistics
-library('corrplot')   # visualization
 library('Hmisc')      # visualization
-library("ggplot2")    # visualization
-library('dplyr')      # data manipulation
-library('psych')      # factor analysis and reliability
+library('stringr')    # manipulating strings
 ```
 
 ```{r}
@@ -27,8 +24,53 @@ responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_No
 
 # remove junk on first two rows
 responses_dt <- responses_dt[3:.N][`Participant Consent`=='agree', ]
+```
 
-# get question wording:
-questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+```{r}
+# logical vector indicating: 
+# 1) value ratings of songs
+# 2) participant ID
+songs <- grepl("-1_|PROLIFIC_PID", colnames(responses_dt)) 
+
+# keep only columns in logical vector
+songs_dt <- responses_dt[, ..songs]
+```
+
+```{r}
+t <- as.data.frame(melt(songs_dt, id.var="PROLIFIC_PID"))
+
+pattern <- paste0("-1_", seq(1, 10, 1))
+songs <- as.character(t$variable)
+
+songs <- gsub(pattern[10], "", songs)
+songs <- gsub(pattern[9], "", songs)
+songs <- gsub(pattern[8], "", songs) 
+songs <- gsub(pattern[7], "", songs) 
+songs <- gsub(pattern[6], "", songs) 
+songs <- gsub(pattern[5], "", songs) 
+songs <- gsub(pattern[4], "", songs) 
+songs <- gsub(pattern[3], "", songs) 
+songs <- gsub(pattern[2], "", songs) 
+songs <- gsub(pattern[1], "", songs) 
+
+t$song <- songs
+```
+
+```{r}
+t$rating <- t$value
+t$variable <- as.character(t$variable)
+songs <- unique(t$song)
+
+#variable <- t$variable
+
+for(i in 1:length(songs)) {
+  t$variable <- gsub(songs[i], "", t$variable)
+}
+
+if(t$variable == "-1_1", t$value = "power")
+
+#t$variable <- gsub(songs[1], "", t$variable)
+
+
 ```
 
