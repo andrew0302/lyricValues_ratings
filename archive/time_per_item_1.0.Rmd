@@ -32,7 +32,30 @@ questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
 
 ```{r}
 clicks_dt <- responses_dt[`Participant Consent`=='agree', ]
+clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(clicks_dt)) 
 ```
+
+
+```{r}
+t <- clicks_dt[, ..clicks]
+t <-melt(t, id.vars=c("PROLIFIC_PID"))
+
+last <- t[variable %like% "Last Click"]
+last$variable <- last$variable %>% gsub("Last.Click", "", .)
+setnames(last, "value", "last_click")
+last$last_click <- as.numeric(last$last_click)
+  
+first <- t[variable %like% "First Click"] 
+first$variable <- first$variable %>% gsub("First.Click", "", .)
+setnames(first, "value", "first_click")
+first$first_click <- as.numeric(first$first_click)
+
+both <- first[last, on = .(PROLIFIC_PID, variable)]
+both[, diff := (last_click - first_click)]
+```
+
+
+
 
 ```{r}
 # remove spaces from column names
@@ -44,9 +67,23 @@ songs <- grepl("First.Click", colnames(clicks_dt))
 # remove extra text
 song_IDs <- colnames(clicks_dt[, ..songs]) %>%
   gsub("X", "", .) %>%
-  gsub(".m_First.Click", "", .)
-song_IDs[-1]
+  gsub(".m_First.Click", "", .) %>%
+  gsub("_First.Click", "", .)
+#song_IDs[-1]
 ```
+
+
+```{r}
+song_IDs <- colnames(clicks_dt[, ..songs]) %>%
+  gsub("First.Click", "", .)
+
+song_IDs
+```
+
+
+
+
+
 ```{r}
 # logical vector with all the 'click' columns and response ID
 clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(clicks_dt)) 

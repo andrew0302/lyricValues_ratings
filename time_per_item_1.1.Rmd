@@ -1,0 +1,113 @@
+---
+title: "time_per_item_1.0"
+author: "andrew demetriou"
+date: "11/29/2021"
+---
+
+
+```{r setup, include=FALSE}
+library('here')       # file logistics
+library('data.table') # data manipulation
+library('dplyr')      # data manipulation
+library('ggplot2')    # data visualization
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# create a list with all of the files
+data_files <- list.files(data_file_path)
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+
+# remove junk on first two rows
+responses_dt <- responses_dt[3:.N]
+
+# get question wording:
+questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+```
+
+
+```{r}
+# dataframe of only participants that have agreed to participate
+clicks_dt <- responses_dt[`Participant Consent`=='agree', ]
+
+# logical vector of matches to: 
+# 1) either first or last click for a question
+# 2) participant ID
+clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(clicks_dt)) 
+```
+
+
+```{r}
+#subset data based on clicks vector
+t <- clicks_dt[, ..clicks]
+
+#pivot to a long format
+t <- melt(t, id.vars=c("PROLIFIC_PID"))
+
+## separate long dt into two shorter dts:
+
+# dt with only rows with "Last Click"
+last <- t[variable %like% "Last Click"]
+# remove 'Last.Click'
+last$variable <- last$variable %>% gsub("Last.Click", "", .)
+# change name of column
+setnames(last, "value", "last_click")
+# make column numeric
+last$last_click <- as.numeric(last$last_click)
+  
+# dt with only rows with "First Click"
+first <- t[variable %like% "First Click"] 
+# remove 'First.Click'
+first$variable <- first$variable %>% gsub("First.Click", "", .)
+# change name of column 
+setnames(first, "value", "first_click")
+# make column numeric
+first$first_click <- as.numeric(first$first_click)
+
+#merge two smaller dts
+both <- first[last, on = .(PROLIFIC_PID, variable)]
+#compute difference
+both[, diff := (last_click - first_click)]
+```
+
+
+```{r}
+#create summary statistics dt by questionnaire section
+summary_dt <- both %>% group_by(variable) %>% summarize(mean = mean(diff), sd = sd(diff))
+
+#a couple outliers, possibly connection issues
+summary_dt
+
+#compute mean and sd seconds per lyric stimulus
+summary_dt[1:20,] %>% summarize(mean = mean(mean), sd=sd(sd))
+```
+
+```{r}
+both %>%
+  ggplot(., aes(x=diff)) +
+  geom_histogram(bins = 1000)
+
+# 13 potential outliers
+both[diff > 500, .N]
+
+both[diff < 500, ] %>%
+  ggplot(., aes(x=diff)) +
+  geom_histogram(bins = 100)
+```
+
+```{r}
+#these have outliers. when removed the values look more normal
+both[variable=='55713838-m_',][diff<9000] %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+
+both[variable=='2241308-m_',][diff<2000] %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+
+both[variable=='205113268-m_',][diff<900]  %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+```
+

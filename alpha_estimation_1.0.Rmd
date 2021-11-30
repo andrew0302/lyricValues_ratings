@@ -10,7 +10,7 @@ library('data.table') # data manipulation
 library('here')       # file logistics
 library('corrplot')   # visualization
 library('Hmisc')      # visualization
-library("ggplot2")
+library("ggplot2")    # visualization
 library('dplyr')      # data manipulation
 library('psych')      # factor analysis and reliability
 ```
@@ -26,119 +26,9 @@ data_files <- list.files(data_file_path)
 responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
 
 # remove junk on first two rows
-responses_dt <- responses_dt[3:.N]
-
-# read in prolific data file
-demogs_dt <- fread(here(data_file_path, "prolific_export_619f3c47f6b78ee67274583e.csv"))
-demogs_dt[, PROLIFIC_PID := participant_id]
-
-# merge datasets
-all_dt <- responses_dt[demogs_dt, on=.(PROLIFIC_PID)]
-complete_dt <- responses_dt[demogs_dt, on=.(PROLIFIC_PID), nomatch=0]
+responses_dt <- responses_dt[3:.N][`Participant Consent`=='agree', ]
 
 # get question wording:
 questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
-```
-
-```{r}
-#create a dataframe to work with
-working_dt <- all_dt[status=='TIMED-OUT', ]
-```
-
-```{r}
-columns <- c("Duration (in seconds)", "PROLIFIC_PID", "time_taken", "Sex", "age")
-overall_time_taken_dt <- working_dt %>% select(columns)
-
-time_taken_plot
-  ggplot(., aes(x=`Duration (in seconds)`, y=age, color=Sex)) +
-  geom_point()
-```
-
-
-```{r}
-suspicious <- c("5f3e5e066dfaa70464615447", "61164fcd0209fe50694212f2")
-
-suspicious_dt <- working_dt[working_dt$PROLIFIC_PID %in% suspicious]
-
-responses_dt[32,]
-```
-
-
-
-```{r}
-#names of lyric preferences columns for subsetting
-lyric_column_names <- c(
-  "Lyric_preferences_1","Lyric_preferences_2","Lyric_preferences_3",
-  "Lyric_preferences_4","Lyric_preferences_5","Lyric_preferences_6",
-  "Lyric_preferences_7", "Lyric_preferences_8", "Lyric_preferences_9", "Lyric_percentage_1")
-
-#subset data table
-lyrics_preferences_dt <- working_dt[, lyric_column_names, with=FALSE]
-
-to_numbers <- function(x) {
-  if(x ==  "Strongly disagree"){x = as.numeric(1)
-  } else if (x== "Somewhat disagree"){x = as.numeric(2)
-  } else if (x== "Neither agree nor disagree"){x = as.numeric(3)
-  } else if (x=="Somewhat agree"){x = as.numeric(4)
-  } else if (x=="Strongly agree"){x = as.numeric(5)
-  } else {x = NA}
-}
-
-#execute recode function on relevant rows
-lyrics_preferences_dt <- lyrics_preferences_dt[, .(
-  L1 = lapply(Lyric_preferences_1, to_numbers), 
-  L2 = lapply(Lyric_preferences_2, to_numbers), 
-  L3 = lapply(Lyric_preferences_3, to_numbers),
-  L4 = lapply(Lyric_preferences_4, to_numbers), 
-  L5 = lapply(Lyric_preferences_5, to_numbers), 
-  L6 = lapply(Lyric_preferences_6, to_numbers), 
-  L7 = lapply(Lyric_preferences_7, to_numbers),
-  L8 = lapply(Lyric_preferences_8, to_numbers),
-  L9 = lapply(Lyric_preferences_9, to_numbers),
-  L10 = Lyric_percentage_1)][, lapply(.SD, as.numeric)]
-
-lyrics_preferences_dt$L2 <- 6-lyrics_preferences_dt$L2
-```
-
-```{r}
-#extract actual wording of questions
-lyrics_questions <- questions[20:28]
-lyrics_questions <- gsub("Please indicate how much you agree with the following statements about your music preferences: - ", "", lyrics_questions)
-lyrics_questions
-```
-```{r}
-cor.mtest <- function(mat, ...) {
-    mat <- as.matrix(mat)
-    n <- ncol(mat)
-    p.mat<- matrix(NA, n, n)
-    diag(p.mat) <- 0
-    for (i in 1:(n - 1)) {
-        for (j in (i + 1):n) {
-            tmp <- cor.test(mat[, i], mat[, j], ...)
-            p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
-        }
-    }
-  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
-  p.mat
-}
-```
-
-```{r}
-p.mat <- cor.mtest(corrplot_dt)
-```
-```{r}
-corrplot_dt <- lyrics_preferences_dt[complete.cases(lyrics_preferences_dt),]
-hist.data.frame(corrplot_dt)
-```
-
-
-```{r}
-corrplot(cor(corrplot_dt), method = "color", type = 'lower', diag=FALSE, addCoef.col	
-="black", p.mat = p.mat, sig.level=0.01)
-```
-
-```{r}
-alpha(corrplot_dt)
-fa(corrplot_dt)
 ```
 
