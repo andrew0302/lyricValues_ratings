@@ -24,6 +24,9 @@ responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_No
 
 # remove junk on first two rows
 responses_dt <- responses_dt[3:.N][`Participant Consent`=='agree', ]
+
+# get question wording:
+questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
 ```
 
 ```{r}
@@ -37,11 +40,15 @@ songs_dt <- responses_dt[, ..songs]
 ```
 
 ```{r}
-t <- as.data.frame(melt(songs_dt, id.var="PROLIFIC_PID"))
+# pivot to long format
+t <- melt(songs_dt, id.var="PROLIFIC_PID")
 
+# create vector of patterns representing each value
 pattern <- paste0("-1_", seq(1, 10, 1))
+#create vector of song IDs
 songs <- as.character(t$variable)
 
+#remove value pattern from each song in vector
 songs <- gsub(pattern[10], "", songs)
 songs <- gsub(pattern[9], "", songs)
 songs <- gsub(pattern[8], "", songs) 
@@ -53,24 +60,41 @@ songs <- gsub(pattern[3], "", songs)
 songs <- gsub(pattern[2], "", songs) 
 songs <- gsub(pattern[1], "", songs) 
 
-t$song <- songs
+#create new variable for song_ID
+t$item_ID <- songs
 ```
 
 ```{r}
-t$rating <- t$value
+#t$rating <- t$value
 t$variable <- as.character(t$variable)
 songs <- unique(t$song)
-
-#variable <- t$variable
 
 for(i in 1:length(songs)) {
   t$variable <- gsub(songs[i], "", t$variable)
 }
-
-if(t$variable == "-1_1", t$value = "power")
-
-#t$variable <- gsub(songs[1], "", t$variable)
-
-
 ```
+
+```{r}
+#converts each possible response into numbers for a given column
+to_value <- function(x) {
+         if (x== "-1_1"){x = "y1"
+  } else if (x== "-1_2"){x = "y2"
+  } else if (x== "-1_3"){x = "y3"
+  } else if (x== "-1_4"){x = "y4"
+  } else if (x== "-1_5"){x = "y5"
+  } else if (x== "-1_6"){x = "y6"
+  } else if (x== "-1_7"){x = "y7"
+  } else if (x== "-1_8"){x = "y8"
+  } else if (x== "-1_9"){x = "y9"
+  } else if (x== "-1_10"){x = "y10"
+  } else {x = NA}
+}
+```
+
+```{r}
+#execute recode function on relevant rows
+s <- t[, variable := lapply(variable, to_value)]
+```
+
+
 
