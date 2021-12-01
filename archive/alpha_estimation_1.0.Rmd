@@ -41,12 +41,14 @@ songs_dt <- responses_dt[, ..songs]
 
 ```{r}
 # pivot to long format
-t <- melt(songs_dt, id.var="PROLIFIC_PID")
+#t <- melt(songs_dt, id.var="PROLIFIC_PID")
+songs_dt <- melt(songs_dt, id.var="PROLIFIC_PID")
 
 # create vector of patterns representing each value
 pattern <- paste0("-1_", seq(1, 10, 1))
 #create vector of song IDs
-songs <- as.character(t$variable)
+#songs <- as.character(t$variable)
+songs <- as.character(songs_dt$variable)
 
 #remove value pattern from each song in vector
 songs <- gsub(pattern[10], "", songs)
@@ -61,7 +63,8 @@ songs <- gsub(pattern[2], "", songs)
 songs <- gsub(pattern[1], "", songs) 
 
 #create new variable for song_ID
-t$song_ID <- songs
+#t$song_ID <- songs
+songs_dt$item_ID <- songs
 ```
 
 ```{r}

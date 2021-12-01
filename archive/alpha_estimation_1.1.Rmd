@@ -1,0 +1,128 @@
+---
+title: "alpha_estimation_1.0"
+author: "andrew demetriou"
+date: "11/25/2021"
+---
+
+
+```{r setup, include=FALSE}
+library('data.table') # data manipulation
+library('here')       # file logistics
+library('dplyr')      # logistics
+library('stringr')    # manipulating strings
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# create a list with all of the files
+data_files <- list.files(data_file_path)
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+
+# remove junk on first two rows
+responses_dt <- responses_dt[3:.N][`Participant Consent`=='agree', ]
+
+# get question wording for each value:
+questions <- as.data.frame(colnames(fread(here(data_file_path, data_files[1]), skip=1)))[41:50,] %>%
+  gsub("Please, rate the importance of the following values as a life-guiding principle for the SPEAKER of the lyrics. Use the slider in which 100 indicates that the value is of supreme importance for them, and -100 indicates that the value is completely opposed to their principles. - ", "", .)
+```
+
+```{r}
+# logical vector indicating: 
+# 1) value ratings of songs
+# 2) participant ID
+songs <- grepl("-1_|PROLIFIC_PID", colnames(responses_dt)) 
+
+# keep only columns in logical vector
+songs_dt <- responses_dt[, ..songs]
+```
+
+```{r}
+# pivot to long format
+songs_dt <- melt(songs_dt, id.var="PROLIFIC_PID")
+
+# create vector of patterns representing each value
+pattern <- paste0("-1_", seq(1, 10, 1))
+#create vector of song IDs
+songs <- as.character(songs_dt$variable)
+
+#remove value pattern from each song in vector
+songs <- gsub(pattern[10], "", songs)
+songs <- gsub(pattern[9], "", songs)
+songs <- gsub(pattern[8], "", songs) 
+songs <- gsub(pattern[7], "", songs) 
+songs <- gsub(pattern[6], "", songs) 
+songs <- gsub(pattern[5], "", songs) 
+songs <- gsub(pattern[4], "", songs) 
+songs <- gsub(pattern[3], "", songs) 
+songs <- gsub(pattern[2], "", songs) 
+songs <- gsub(pattern[1], "", songs) 
+
+#create new variable for song_ID
+songs_dt$item_ID <- songs
+```
+
+```{r}
+# convert column to character instead of factor
+songs_dt$variable <- as.character(songs_dt$variable)
+# create a vector of only unique song IDs
+songs <- unique(songs_dt$item_ID)
+
+# remove song ID from character string
+# this will leave the extension, which denotes which value is rated
+for(i in 1:length(songs)) {
+  songs_dt$variable <- gsub(songs[i], "", songs_dt$variable)
+}
+
+```
+
+```{r}
+to_value <- function(x) {
+         if (x== "-1_1") {x = questions[1]    # power
+  } else if (x== "-1_2") {x = questions[2]    # achievement
+  } else if (x== "-1_3") {x = questions[3]    # hedonism
+  } else if (x== "-1_4") {x = questions[4]    # stimulation
+  } else if (x== "-1_5") {x = questions[5]    # self-direction
+  } else if (x== "-1_6") {x = questions[6]    # universalism
+  } else if (x== "-1_7") {x = questions[7]    # benevolence
+  } else if (x== "-1_8") {x = questions[8]    # tradition
+  } else if (x== "-1_9") {x = questions[9]    # conformity
+  } else if (x== "-1_10"){x = questions[10]   # security
+  } else {x = NA}
+}
+```
+
+```{r}
+#stringr::str_extract(questions[1], '\\w*')
+
+pull_out_word <- function(question) {
+  stringr::str_extract(question, '\\w*')
+}
+
+to_value <- function(x) {
+         if (x== "-1_1") {x = pull_out_word(questions[1])    # power
+  } else if (x== "-1_2") {x = pull_out_word(questions[2])    # achievement
+  } else if (x== "-1_3") {x = pull_out_word(questions[3])    # hedonism
+  } else if (x== "-1_4") {x = pull_out_word(questions[4])    # stimulation
+  } else if (x== "-1_5") {x = pull_out_word(questions[5])    # self-direction
+  } else if (x== "-1_6") {x = pull_out_word(questions[6])    # universalism
+  } else if (x== "-1_7") {x = pull_out_word(questions[7])    # benevolence
+  } else if (x== "-1_8") {x = pull_out_word(questions[8])    # tradition
+  } else if (x== "-1_9") {x = pull_out_word(questions[9])    # conformity
+  } else if (x== "-1_10"){x = pull_out_word(questions[10])   # security
+  } else {x = NA}
+}
+```
+
+
+
+```{r}
+#execute recode function on relevant rows
+songs_dt <- songs_dt[, variable := lapply(variable, to_value)]
+```
+
+
+
