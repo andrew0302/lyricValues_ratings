@@ -24,13 +24,13 @@ responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_No
 
 # remove junk on first two rows
 responses_dt <- responses_dt[3:.N][`Participant Consent`=='agree', ]
-
-# get question wording for each value:
-questions <- as.data.frame(colnames(fread(here(data_file_path, data_files[1]), skip=1)))[41:50,] %>%
-  gsub("Please, rate the importance of the following values as a life-guiding principle for the SPEAKER of the lyrics. Use the slider in which 100 indicates that the value is of supreme importance for them, and -100 indicates that the value is completely opposed to their principles. - ", "", .)
 ```
 
 ```{r}
+# get question wording for each value:
+questions <- as.data.frame(colnames(fread(here(data_file_path, data_files[1]), skip=1)))[41:50,] %>%
+  gsub("Please, rate the importance of the following values as a life-guiding principle for the SPEAKER of the lyrics. Use the slider in which 100 indicates that the value is of supreme importance for them, and -100 indicates that the value is completely opposed to their principles. - ", "", .)
+
 # logical vector indicating: 
 # 1) value ratings of songs
 # 2) participant ID
@@ -62,7 +62,8 @@ songs <- gsub(pattern[2], "", songs)
 songs <- gsub(pattern[1], "", songs) 
 
 #create new variable for song_ID
-songs_dt$item_ID <- songs
+#songs_dt$item_ID <- songs
+songs_dt[, item_ID := ..songs]
 ```
 
 ```{r}
@@ -76,7 +77,6 @@ songs <- unique(songs_dt$item_ID)
 for(i in 1:length(songs)) {
   songs_dt$variable <- gsub(songs[i], "", songs_dt$variable)
 }
-
 ```
 
 ```{r}
@@ -104,7 +104,73 @@ to_value <- function(x) {
 ```{r}
 #execute recode function on relevant rows
 songs_dt <- songs_dt[, variable := lapply(variable, to_value)]
+
+# create a list of unique values
+values <- unique(songs_dt$variable)
 ```
 
+```{r}
+#replace blank responses with explicit "0"
+songs_dt$value <- sub("^$", "0", songs_dt$value)
+songs_dt$value <- as.numeric(songs_dt$value)
+
+#rename participant ID
+setnames(songs_dt, "PROLIFIC_PID", "participant_ID")
+```
+
+```{r}
+# somehow the variable column became a list
+# this turns it back into a character vector
+songs_dt$variable <- as.character(songs_dt$variable)
+
+# pivot to wide format, where each value is now its own column
+songs_dt <- dcast(songs_dt, participant_ID + item_ID ~ variable, value.var = "value")
+```
+
+```{r}
+pivot_datatable <- function(dt, column){
+  
+    #dt <- rename_columns(dt)
+  
+    # select ID columns
+    # and the variable that will define the dataset
+    dt[, c("participant_ID", "item_ID", ..column)] %>%
+    
+    # restructure dataframe so that columns are the individual items
+    # and the values in the columns are the scores for the variable
+    dcast(., participant_ID ~ item_ID)
+    
+}
+```
+
+```{r}
+pivot_datatable(songs_dt, "ACHIEVEMENT")
+```
+
+
+```{r}
+
+dt<-songs_dt
+
+make_list_of_pivoted_datatables <- function(dt, values){
+  
+  #get a list of column names,which are the variables in the dataset
+  #column_list <- c("y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10")
+  
+  
+  dt_list <- lapply(values, function(x){
+      #pivot the dataframe
+      pivot_datatable(dt, x)
+    
+  })
+  
+  setNames(dt_list, values)
+}
+```
+
+```{r}
+t<- make_list_of_pivoted_datatables(songs_dt, values)
+s<-t[[1]]
+```
 
 
