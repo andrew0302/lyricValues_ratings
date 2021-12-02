@@ -29,7 +29,7 @@ responses_dt <- responses_dt[3:.N]
 demogs_dt <- fread(here(data_file_path, "prolific_export_619f3c47f6b78ee67274583e.csv"))
 demogs_dt[, PROLIFIC_PID := participant_id]
 
-# merge datasets
+# merge datasets: PROLIFIC DATA NOT ON GITHUB
 all_dt <- responses_dt[demogs_dt, on=.(PROLIFIC_PID)]
 complete_dt <- responses_dt[demogs_dt, on=.(PROLIFIC_PID), nomatch=0]
 
