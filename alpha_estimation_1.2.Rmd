@@ -266,7 +266,8 @@ make_list_of_alpha_tibbles_dt <- function(
 
 ```{r}
 #s <- make_list_of_alpha_tibbles_dt(songs_dt, 30)
-save(s, file = "list_of_alpha_tibbles.rds")
+#save(s, file = "list_of_alpha_tibbles.rds")
+load("list_of_alpha_tibbles.rds")
 ```
 
 ```{r}
@@ -282,13 +283,14 @@ plot_alphas <- function(alpha_dt){
 ```
 
 ```{r}
-plot_alphas(s[[1]])
+#plot_alphas(s[[1]])
 ```
 ```{r}
 list_of_plots <- lapply(s, plot_alphas)
 ```
 
 ```{r}
+names(list_of_plots) <- names(s)
 list_of_plots
 ```
 

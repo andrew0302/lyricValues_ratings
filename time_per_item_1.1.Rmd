@@ -40,6 +40,7 @@ clicks_dt <- responses_dt[`Participant Consent`=='agree', ]
 clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(clicks_dt)) 
 ```
 
+According to: https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/question-types-guide/advanced/timing/, the time is in seconds. 
 
 ```{r}
 #subset data based on clicks vector
@@ -77,13 +78,13 @@ both[, diff := (last_click - first_click)]
 
 ```{r}
 #create summary statistics dt by questionnaire section
-summary_dt <- both %>% group_by(variable) %>% summarize(mean = mean(diff), sd = sd(diff))
+summary_dt <- both[diff<900] %>% group_by(variable) %>% summarize(mean = mean(diff), sd = sd(diff))
 
 #a couple outliers, possibly connection issues
 summary_dt
 
 #compute mean and sd seconds per lyric stimulus
-summary_dt[1:20,] %>% summarize(mean = mean(mean), sd=sd(sd))
+summary_dt[1:20,] %>% summarize(mean = mean(mean), sd=mean(sd))
 ```
 
 ```{r}

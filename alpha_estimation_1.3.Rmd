@@ -1,0 +1,269 @@
+---
+title: "alpha_estimation"
+author: "andrew demetriou"
+date: "11/25/2021"
+---
+
+
+```{r setup, include=FALSE}
+library('data.table') # data manipulation
+library('here')       # file logistics
+library('dplyr')      # logistics
+library('ggplot2')    # visualization
+library('shiny')      # interactive results
+library('DT')         # interactive table
+
+# organize qualtrics output
+source("data_file_re-shape_1.0.R")
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# file name as a string
+file_name <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, file_name)) %>%
+  data_file_reshape(., file_name)
+```
+
+
+```{r}
+pivot_datatable <- function(dt, column){
+  
+    # select ID columns
+    # and the variable that will define the dataset
+    dt[, c("participant_ID", "item_ID", ..column)] %>%
+    
+    # restructure dataframe so that columns are the individual items
+    # and the values in the columns are the scores for the variable
+    dcast(., participant_ID ~ item_ID)
+    
+}
+```
+
+```{r}
+#pivot_datatable(songs_dt, "ACHIEVEMENT")
+```
+
+
+```{r}
+make_list_of_pivoted_datatables <- function(dt, values){
+  
+  #get a list of column names,which are the variables in the dataset
+  values <- colnames(dt)
+  values <- values[!values %in% c("participant_ID", "item_ID")]
+  
+  
+  dt_list <- lapply(values, function(x){
+      #pivot the dataframe
+      pivot_datatable(dt, x)
+    
+  })
+  
+  setNames(dt_list, values)
+}
+```
+
+```{r}
+# t<- make_list_of_pivoted_datatables(songs_dt, values)
+```
+
+```{r}
+get_alpha_dt <- function(dt, n) {
+  
+  #setDT(dt)
+  
+  #remove subject_ID column
+  #compute means of each column
+  #transpose to a column
+  canon <- dt[, -c("participant_ID")][, lapply(.SD, mean)] %>% t()
+    
+  #sample n rows from the databale
+  data_sample <- sapply(dt[, -c("participant_ID")], sample, n) %>%
+    # coax to data frame, then to data table
+    as.data.frame(.) %>% setDT(.)
+  
+  # calculate cronbach's alpha
+  withCallingHandlers(capture.output(suppressWarnings(a <- psych::alpha(t(data_sample)))))
+  alpha <- a$total["std.alpha"] %>% pluck(1)
+
+  # calculate mean sample ratings
+  sample_means <- data_sample[,lapply(.SD, mean, na.rm=TRUE)] %>% t()
+  
+  # calculate correlation between sample mean ratings and canon
+  r <- cor(sample_means, canon)[[1,1]]
+  
+  # return relevant data
+  data.table(
+    n = n,
+    alpha = alpha,
+    r = r
+  )
+}
+```
+
+```{r}
+#get_alpha_dt(t[[1]], 20)
+```
+
+```{r}
+samples_of_alphas <- function(
+  dt, 
+  n_samples = 10, 
+  n_raters = seq(5, 50, by = 5)
+  ){
+  #draw n_raters number of samples n_samples number of times
+  alpha_tibble <- rep(n_raters, each = n_samples) %>% 
+    purrr::map_df( function(n) { 
+      get_alpha_dt(dt, n)
+    })
+  return(alpha_tibble)
+}
+```
+
+```{r}
+#samples_of_alphas_dt(t[[1]])
+```
+
+```{r}
+make_list_of_alpha_tibbles_dt <- function(
+  dt, 
+  n_samples = 10, 
+  n_raters = seq(5, 50, by = 5)
+  ){
+  
+  
+  #get a list of column names which are the variables in the dataset
+  column_list <- colnames(dt %>% select(-participant_ID, -item_ID))
+    canon <- dt[, -c("participant_ID")][, lapply(.SD, mean)] %>% t()
+
+  #create a dt for every dependent variables
+  dt_list <- dt %>% 
+    make_list_of_pivoted_datatables() 
+  
+  #create an empty list
+  alpha_tibble_list <- list()
+
+  #iterate over the list of variable names
+  counter <- 1
+  for(i in column_list){
+
+    #for each variable, make a tibble of resampled alphas
+    alpha_tibble_list[[counter]] <- samples_of_alphas(dt_list[[counter]], n_samples, n_raters)
+      
+    #name the tibble after the variable
+    names(alpha_tibble_list)[[counter]] <- column_list[counter]
+    
+    #update counter
+    counter <- counter+1
+  }
+  return(alpha_tibble_list)
+}
+```
+
+```{r}
+s <- make_list_of_alpha_tibbles_dt(responses_dt, 30)
+```
+```{r}
+summarize_alpha_tibble <- function(
+  alpha_tibble, 
+  alpha_threshold=0.8
+){
+
+  alpha_tibble %>%
+    #group by the number of sub samples
+    group_by(n) %>%
+    summarise(
+      `median alpha` = round(quantile(alpha, .5), 2),
+      `90% alpha >` = round(quantile(alpha, .1), 2),
+      `alpha >= 0.8` = round(mean(alpha >= alpha_threshold), 2),
+      `median r` = round(quantile(r, .5), 2),
+      `90% r >` = round(quantile(r, .1), 2)
+    )
+}
+```
+
+```{r}
+t<-lapply(s, summarize_alpha_tibble)
+```
+
+```{r}
+alpha_summary_tibble <- t[[1]]
+```
+
+
+```{r}
+minimum_n_by_alpha <- function(alpha_tibble, alpha_threshold){
+  #return only rows that meet the alpha_threshold criteria
+  results_df <- alpha_tibble[alpha_tibble[,2] >= alpha_threshold,] %>%
+    #return row with the lowest value for n
+    slice(which.min(n))
+}
+```
+
+```{r}
+u <- do.call(rbind, lapply(t, minimum_n_by_alpha, .8))
+```
+
+
+```{r}
+plot_alphas <- function(alpha_dt){
+  ggplot(alpha_dt) +
+    geom_vline(xintercept = 0.8, color = "grey50" ) +
+    geom_density(aes(alpha, colour = as.factor(n))) + 
+    xlim(0, 1) +
+    labs(title = "Distribution of Alphas by Rater N\n", 
+       color = "Number of raters\n") +
+    theme_minimal()
+}
+```
+
+```{r}
+#plot_alphas(s[[1]])
+```
+
+```{r}
+list_of_plots <- lapply(s, plot_alphas)
+names <- names(s)
+```
+
+```{r}
+for(i in 1:length(names)){
+  list_of_plots[[i]] <- list_of_plots[[i]] + labs(title=paste("Distribution of Alphas by Rater N for", names[i]))
+}
+```
+
+```{r}
+
+
+ui <- fluidPage(
+  titlePanel("Alpha Reliability by Value"),
+  
+  # drop down menu to display the values
+  selectInput('value', 'select value', choice = c(names)), 
+  
+  #plot this thing called 'alpha_plot'
+  plotOutput('alpha_plot'),
+  
+  #tableOutput('alpha_table')
+  DT::DTOutput('alpha_table')
+)
+
+server <- function(input, output, session){
+  output$alpha_plot <- renderPlot({
+
+    plot_alphas(s[[input$value]]) +
+      labs(title=paste("Distribution of Alphas by Rater N for", input$value))
+    
+  })
+  
+  output$alpha_table <- renderDataTable(u)
+}
+
+shinyApp(ui=ui, server=server)
+
+```
+
