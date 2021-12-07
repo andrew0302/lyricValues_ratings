@@ -1,0 +1,180 @@
+---
+title: "time_per_item"
+author: "andrew demetriou"
+date: "11/29/2021"
+---
+
+
+```{r setup, include=FALSE}
+library('here')       # file logistics
+library('data.table') # data manipulation
+library('dplyr')      # data manipulation
+library('ggplot2')    # data visualization
+library('shiny')      # interactive visualization
+library('DT')         # interactive visualization
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# create a list with all of the files
+data_files <- list.files(data_file_path)
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+
+# remove junk on first two rows
+responses_dt <- responses_dt[3:.N]
+
+# get question wording:
+questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+```
+
+
+```{r}
+# dataframe of only participants that have agreed to participate
+responses_dt <- responses_dt[`Participant Consent`=='agree', ]
+
+# logical vector of matches to: 
+# 1) either first or last click for a question
+# 2) participant ID
+clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(responses_dt)) 
+```
+
+According to: https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/question-types-guide/advanced/timing/, the time is in seconds. 
+
+```{r}
+#subset data based on clicks vector
+clicks_dt <- responses_dt[, ..clicks]
+
+#pivot to a long format
+clicks_dt <- melt(clicks_dt, id.vars=c("PROLIFIC_PID"))
+
+## separate long dt into two shorter dts:
+
+# dt with only rows with "Last Click"
+last <- clicks_dt[variable %like% "Last Click"]
+# remove 'Last.Click'
+last$variable <- last$variable %>% gsub("Last.Click", "", .)
+# change name of column
+setnames(last, "value", "last_click")
+# make column numeric
+last$last_click <- as.numeric(last$last_click)
+  
+# dt with only rows with "First Click"
+first <- clicks_dt[variable %like% "First Click"] 
+# remove 'First.Click'
+first$variable <- first$variable %>% gsub("First.Click", "", .)
+# change name of column 
+setnames(first, "value", "first_click")
+# make column numeric
+first$first_click <- as.numeric(first$first_click)
+
+#merge two smaller dts
+both <- first[last, on = .(PROLIFIC_PID, variable)]
+#compute difference
+both[, diff := (last_click - first_click)]
+
+rm(first, last, clicks_dt, responses_dt)
+```
+```{r}
+both_plot <- both[diff > 0 & diff < 900,] %>% 
+  #ggplot(., aes(y=variable, x=diff)) +
+  ggplot(., aes(x=diff, y=variable, color = variable)) +
+  geom_boxplot(show.legend=FALSE)
+
+both_plot
+```
+
+```{r}
+both[order(-diff),]
+```
+```{r}
+#these have outliers. when removed the values look more normal
+both[variable=='55713838-m_',][diff<9000] %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+
+both[variable=='2241308-m_',][diff<2000] %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+
+both[variable=='205113268-m_',][diff<900]  %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+```
+
+```{r}
+#compute mean and sd seconds per lyric stimulus
+summary_dt[1:20,] %>% summarize(mean = mean(mean), sd=mean(sd))
+
+#create summary statistics dt by questionnaire section
+summary_dt <- both[diff<900] %>% group_by(variable) %>% summarize(mean = mean(diff), sd = sd(diff)) %>% ungroup()
+
+#make data table
+setDT(summary_dt)
+```
+Song # 151085454
+
+"I think cancers gonna kill me 
+'Cause I got a real bad sunburn when I was 13
+ Couldn't sit in a classroom chair for at least a week
+ Maybe I shouldn't have fallen asleep
+ In that hot, hot sun without a little bit of sunscreen
+ Don't let this reflect too badly on my character
+ I think a car is gonna kill me 'cause
+ I Ride my bike consistently throughout the city
+ And we all know, it's only so long before you get hit"
+ 
+
+Song # 99567690
+
+"Hey guy - you're the one for me 
+ Your face - the sweetest thing I've ever seen 
+ Stop by - dedicate to me 
+ Your time - your time 
+ At night - it really gets to me 
+ I find nobody is here with me 
+ Stop by - say you'll stay with me 
+ You're the one I really miss 
+ Every single day - single hour 
+ I can see your face - single day"
+
+ 
+```{r}
+summary_dt[order(-mean),]
+summary_dt[order(-sd),]
+```
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Time Taken by Song (in seconds)"),
+  
+  # drop down menu to display the values
+  #selectInput('value', 'select value', choice = c(names)), 
+  
+  #plot this thing called 'alpha_plot'
+  plotOutput('both_plot'),
+  
+  #tableOutput('alpha_table')
+  DT::DTOutput('both')
+)
+
+server <- function(input, output, session){
+  
+  # render the plots; alpha distribution by n
+  output$both_plot <- renderPlot({
+    both[diff > 0 & diff < 900,] %>% 
+    #ggplot(., aes(y=variable, x=diff)) +
+    ggplot(., aes(x=diff, y=variable, color = variable)) +
+    geom_boxplot(show.legend=FALSE) +
+  
+    #this adds the label to the title
+    labs(title=paste("Time Taken by Song (in seconds)"))
+  })
+  
+  # render the table of minimum n alpha summaries
+  output$both <- renderDataTable(both)
+}
+shinyApp(ui=ui, server=server)
+```
+
+

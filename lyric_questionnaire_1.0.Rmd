@@ -1,5 +1,5 @@
 ---
-title: "lyric_questionnaire_1.0"
+title: "lyric_questionnaire"
 author: "andrew demetriou"
 date: "11/29/2021"
 ---
@@ -7,11 +7,13 @@ date: "11/29/2021"
 
 ```{r setup, include=FALSE}
 library('data.table') # data manipulation
+library('dplyr')      # data manipulation
 library('here')       # file logistics
 library('corrplot')   # visualization
 library('Hmisc')      # visualization
 library("ggplot2")    # visualization
 library('psych')      # factor analysis and reliability
+library('shiny')      # interactive visualization
 ```
 
 ```{r}
@@ -83,6 +85,9 @@ lyrics_questions <- gsub("Please indicate how much you agree with the following 
 
 #print questions
 lyrics_questions
+
+all_lyrics_questions <- lapply(lyrics_questions, function(x) paste0(x, "\n")) 
+all_lyrics_questions <- paste(all_lyrics_questions, collapse = " ")
 ```
 
 ```{r}
@@ -109,6 +114,17 @@ corrplot_dt <- lyrics_preferences_dt[complete.cases(lyrics_preferences_dt),]
 
 #print a histogram of each variable
 hist.data.frame(corrplot_dt)
+```
+
+```{r}
+histogram_plot_function <- function(column){
+  ggplot(corrplot_dt, aes(x=column)) +
+    geom_histogram(bins=30) +
+    scale_y_continuous(limits = c(0,300)) +
+    labs(paste0("Histogram of", column))
+}
+
+list_of_histograms <- lapply(corrplot_dt, histogram_plot_function)
 ```
 
 
@@ -142,6 +158,111 @@ alpha(corrplot_dt)
 ```
 
 ```{r}
-fa(corrplot_dt, rotate = "varimax", fm="ml")
+#fa(corrplot_dt, rotate = "varimax", fm="ml")
+```
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Lyric Questions"),
+  
+  # drop down menu to display the values
+  numericInput('choice', 'select question number', value=1, min=1, step=1, max=10), 
+  
+  # print out specific question
+  uiOutput('question_text'),
+  
+  #plot histogram of question responses
+  plotOutput('histogram'),
+  
+  # print out all lyrics questions
+  verbatimTextOutput('all_questions'),
+  
+  #correlation plot
+  plotOutput('corrplot')
+)
+
+server <- function(input, output, session){
+  
+  # retrieve input list element
+  output$question_text <- renderUI(lyrics_questions[input$choice])
+  
+  # show complete list
+  output$all_questions <- renderText(all_lyrics_questions)
+  
+  # plot input item histogram
+  output$histogram <- renderPlot({
+  list_of_histograms[input$choice] 
+  })
+  
+  # correlation plot of lyrics responses
+  output$corrplot <- renderPlot({
+    corrplot(cor(corrplot_dt), method = "color", type = 'lower', diag=FALSE, addCoef.col	
+="black", p.mat = p.mat, sig.level=0.05)
+  })
+  
+  
+}
+shinyApp(ui=ui, server=server)
+```
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Lyric Questions Distributions"),
+  
+  sidebarLayout(
+
+    sidebarPanel(
+      # drop down menu to display the values
+      numericInput('choice', 'select question number', value=1, min=1, step=1, max=10)), 
+  
+    mainPanel(
+      # print out specific question
+      uiOutput('question_text'),
+
+      #plot histogram
+      plotOutput('histogram'))
+
+  )
+)
+server <- function(input, output, session){
+  # retrieve input list element
+  output$question_text <- renderUI(lyrics_questions[input$choice])
+  
+  # plot input item histogram
+  output$histogram <- renderPlot({
+  list_of_histograms[input$choice] 
+  })
+  
+  # show complete list
+  output$all_questions <- renderText(all_lyrics_questions)
+  
+}
+shinyApp(ui=ui, server=server)
+```
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Lyric Questions Correlations"),
+  
+  # print out all lyrics questions
+  verbatimTextOutput('all_questions'),
+  
+  #correlation plot
+  plotOutput('corrplot')
+
+  )
+
+server <- function(input, output, session){
+  
+  # show complete list
+  output$all_questions <- renderText(all_lyrics_questions)
+  
+  # correlation plot of lyrics responses
+  output$corrplot <- renderPlot({
+  corrplot(cor(corrplot_dt), method = "color", type = 'lower', diag=FALSE, addCoef.col="black", p.mat = p.mat, sig.level=0.05)
+  })
+  
+}
+shinyApp(ui=ui, server=server)
 ```
 

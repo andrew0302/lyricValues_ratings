@@ -45,7 +45,7 @@ pivot_datatable <- function(dt, column){
 ```
 
 ```{r}
-#pivot_datatable(songs_dt, "ACHIEVEMENT")
+#pivot_datatable(responses_dt, "ACHIEVEMENT")
 ```
 
 
@@ -68,7 +68,7 @@ make_list_of_pivoted_datatables <- function(dt, values){
 ```
 
 ```{r}
-# t<- make_list_of_pivoted_datatables(songs_dt, values)
+# t <- make_list_of_pivoted_datatables(songs_dt, values)
 ```
 
 ```{r}
@@ -165,8 +165,9 @@ make_list_of_alpha_tibbles_dt <- function(
 ```
 
 ```{r}
-s <- make_list_of_alpha_tibbles_dt(responses_dt, 30)
+list_of_alpha_tibbles <- make_list_of_alpha_tibbles_dt(responses_dt, 30)
 ```
+
 ```{r}
 summarize_alpha_tibble <- function(
   alpha_tibble, 
@@ -187,11 +188,11 @@ summarize_alpha_tibble <- function(
 ```
 
 ```{r}
-t<-lapply(s, summarize_alpha_tibble)
+list_of_alpha_summaries <-lapply(list_of_alpha_tibbles, summarize_alpha_tibble)
 ```
 
 ```{r}
-alpha_summary_tibble <- t[[1]]
+alpha_summary <- list_of_alpha_summaries[[1]]
 ```
 
 
@@ -205,7 +206,8 @@ minimum_n_by_alpha <- function(alpha_tibble, alpha_threshold){
 ```
 
 ```{r}
-u <- do.call(rbind, lapply(t, minimum_n_by_alpha, .8))
+minimum_n_summary_table <- do.call(rbind, lapply(list_of_alpha_summaries, minimum_n_by_alpha, .8)) %>% setDT(., keep.rownames=TRUE)
+minimum_n_summary_table
 ```
 
 
@@ -226,8 +228,8 @@ plot_alphas <- function(alpha_dt){
 ```
 
 ```{r}
-list_of_plots <- lapply(s, plot_alphas)
-names <- names(s)
+list_of_plots <- lapply(list_of_alpha_tibbles, plot_alphas)
+names <- names(list_of_alpha_tibbles)
 ```
 
 ```{r}
@@ -237,8 +239,6 @@ for(i in 1:length(names)){
 ```
 
 ```{r}
-
-
 ui <- fluidPage(
   titlePanel("Alpha Reliability by Value"),
   
@@ -253,17 +253,20 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session){
+  
+  # render the plots; alpha distribution by n
   output$alpha_plot <- renderPlot({
-
-    plot_alphas(s[[input$value]]) +
-      labs(title=paste("Distribution of Alphas by Rater N for", input$value))
+  
+    #note: I've already created the plots 
+    plot_alphas(list_of_alpha_tibbles[[input$value]]) +
     
+    #this adds the label to the title
+    labs(title=paste("Distribution of Alphas by Rater N for", input$value))
   })
   
-  output$alpha_table <- renderDataTable(u)
+  # render the table of minimum n alpha summaries
+  output$alpha_table <- renderDataTable(minimum_n_summary_table)
 }
-
 shinyApp(ui=ui, server=server)
-
 ```
 

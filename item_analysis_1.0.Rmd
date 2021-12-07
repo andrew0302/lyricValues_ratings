@@ -1,0 +1,153 @@
+---
+title: "descriptives_function"
+author: "andrew demetriou"
+date: "07/12/2021"
+---
+
+
+```{r setup, include=FALSE}
+library('here')            # file logistics
+library('data.table')      # data manipulation
+library('dplyr')           # data manipulation
+
+library('ggplot2')         # visualization
+library('shiny')           # interactive visualization
+library('DT')              # interactive tables
+
+library("broom.mixed")     # data wrangling
+library("broom")
+library("lme4")            # estimating random effects
+
+library('parallel')        # set the number of usable cores
+library('future.apply')    # parallelize apply() functions
+
+# ensure this script returns the same results on each run
+set.seed(42) #the answer to life, the universe, and everything
+
+#compute number of cores in cluster for parallelization
+workers <- detectCores()-1
+future::plan(multisession, workers = workers)
+
+# organize qualtrics output
+source("data_file_re-shape_1.0.R")
+
+# extract random effects and confidence intervals
+source("descriptives_function_1.6.R")
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# file name as a string
+file_name <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, file_name)) %>%
+  data_file_reshape(., file_name)
+```
+
+```{r}
+random_effects_dt <- assemble_random_effects_dt(responses_dt)
+```
+
+```{r}
+random_effects_dt %>%
+  ggplot(aes(model, item_ID, color = model)) +
+  geom_errorbar(aes(ymin = item_ID_lower, ymax = item_ID_higher), position="dodge") +
+  geom_point(size = 2) + 
+  theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
+  scale_y_continuous(limits = c(0, 40))
+```
+
+```{r}
+random_effects_dt %>%
+  ggplot(aes(model, participant_ID, color = model)) +
+  geom_errorbar(aes(ymin = participant_ID_lower, ymax = participant_ID_higher), position="dodge") +
+  geom_point(size = 2) + 
+  theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
+  scale_y_continuous(limits = c(0, 40))
+```
+```{r}
+responses_dt %>% group_by(item_ID) %>% 
+  ggplot(aes(x=STIMULATION, y=item_ID, color=item_ID)) + 
+  geom_boxplot(show.legend = FALSE)
+```
+
+
+```{r}
+responses_dt <- as.data.frame(responses_dt)
+
+list_of_value_by_song_plots <- lapply(3:12, function(i){
+  ggplot(responses_dt, aes(x=responses_dt[,i], y=item_ID, color=item_ID)) +
+    geom_boxplot(show.legend=FALSE)
+})
+
+values<-c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", 
+          "POWER", "SECURITY", "SELF", "STIMULATION", 
+          "TRADITION",  "UNIVERSALISM")
+
+names(list_of_value_by_song_plots) <- values
+```
+
+```{r}
+responses_dt <- setDT(responses_dt)
+
+item_mean <- aggregate(responses_dt[,3:12], list(responses_dt$item_ID), mean)
+setDT(item_mean)
+item_mean[, stat := 'mean']
+colnames <- colnames(item_mean)
+
+item_sd <- aggregate(responses_dt[,3:12], list(responses_dt$item_ID), sd)
+setDT(item_sd)
+item_sd[, stat := 'sd']
+
+setnames(item_mean, "Group.1", "item_ID")
+setnames(item_sd,   "Group.1", "item_ID")
+
+responses_dt <- as.data.frame(responses_dt)
+```
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Distribution of Ratings per song by Value"),
+  
+  # drop down menu to display the values
+  selectInput('choice', 'select value', choice = values), 
+  
+  #plot song plot
+  plotOutput('value_by_song_plots'),
+  
+  #display item_means
+  DT::DTOutput('item_mean'),
+  
+  #display item_sds
+  DT::DTOutput('item_sd')
+)
+
+server <- function(input, output, session){
+  
+  # render the plots; alpha distribution by n
+  output$value_by_song_plots <- renderPlot({
+      list_of_value_by_song_plots[input$choice]
+  })
+  
+  #display_summary <- function() {
+  #  item_mean %>% select(item_ID, input$choice)
+  #  item_sd   %>% select(item_ID, input$choice)
+  #}
+  
+  display_summary <- function(dt) {
+    dt %>% select(stat, item_ID, input$choice)
+  }
+  
+  output$item_mean <- renderDataTable({display_summary(item_mean)})
+  output$item_sd   <- renderDataTable({display_summary(item_sd)})
+  
+  #output$item_mean <- renderDataTable(item_mean)
+  #output$item_sd <- renderDataTable(item_sd)
+  
+  }
+shinyApp(ui=ui, server=server)
+```
+
