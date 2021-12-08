@@ -103,6 +103,8 @@ both[variable=='205113268-m_',][diff<900]  %>%
 ```
 
 ```{r}
+summary_dt <- both %>% group_by(variable) %>% summarize(mean = mean(diff), sd = sd(diff)) %>% ungroup()
+
 #compute mean and sd seconds per lyric stimulus
 summary_dt[1:20,] %>% summarize(mean = mean(mean), sd=mean(sd))
 
@@ -172,7 +174,7 @@ server <- function(input, output, session){
   })
   
   # render the table of minimum n alpha summaries
-  output$both <- renderDataTable(both)
+  output$both <- renderDataTable(both[diff > 0 & diff < 900,])
 }
 shinyApp(ui=ui, server=server)
 ```

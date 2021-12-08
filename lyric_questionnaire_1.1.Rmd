@@ -42,7 +42,10 @@ working_dt <- responses_dt[`Participant Consent`=='agree', ]
 lyric_activities_columns <- c("Lyric Activities_1", "Lyric Activities_2", "Lyric Activities_3", "Lyric Activities_4", "Lyric Activities_5")
 
 lyric_activities <- working_dt[, ..lyric_activities_columns] 
+lyric_activities$`Lyric Activities_1`[lyric_activities$`Lyric Activities_1`=='']<-NA
+lyric_activities <- lyric_activities[!is.na(lyric_activities$`Lyric Activities_1`)]
 ```
+
 
 
 ```{r}
@@ -211,50 +214,16 @@ server <- function(input, output, session){
 shinyApp(ui=ui, server=server)
 ```
 
-```{r}
-ui <- fluidPage(
-  titlePanel("Lyric Questions Distributions"),
-  
-  sidebarLayout(
-
-    sidebarPanel(
-      # drop down menu to display the values
-      numericInput('choice', 'select question number', value=1, min=1, step=1, max=10)), 
-  
-    mainPanel(
-      # print out specific question
-      uiOutput('question_text'),
-
-      #plot histogram
-      plotOutput('histogram'))
-
-  )
-)
-server <- function(input, output, session){
-  # retrieve input list element
-  output$question_text <- renderUI(lyrics_questions[input$choice])
-  
-  # plot input item histogram
-  output$histogram <- renderPlot({
-  list_of_histograms[input$choice] 
-  })
-  
-  # show complete list
-  output$all_questions <- renderText(all_lyrics_questions)
-  
-}
-shinyApp(ui=ui, server=server)
-```
 
 ```{r}
 ui <- fluidPage(
-  titlePanel("Lyric Questions Correlations"),
+  titlePanel("Lyric Item Suggestions"),
   
   # print out all lyrics questions
   verbatimTextOutput('all_questions'),
   
   #correlation plot
-  plotOutput('corrplot')
+  DT::DTOutput('suggestions')
 
   )
 
@@ -263,10 +232,8 @@ server <- function(input, output, session){
   # show complete list
   output$all_questions <- renderText(all_lyrics_questions)
   
-  # correlation plot of lyrics responses
-  output$corrplot <- renderPlot({
-  corrplot(cor(corrplot_dt), method = "color", type = 'lower', diag=FALSE, addCoef.col="black", p.mat = p.mat, sig.level=0.05)
-  })
+  # show interactive table of suggestions
+  output$suggestions <- renderDataTable(lyric_activities)
   
 }
 shinyApp(ui=ui, server=server)
