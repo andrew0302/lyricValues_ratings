@@ -11,6 +11,7 @@ library('data.table')      # data manipulation
 library('dplyr')           # data manipulation
 
 library('ggplot2')         # visualization
+library('ggridges')        # joyplot visualization
 library('shiny')           # interactive visualization
 library('DT')              # interactive tables
 
@@ -68,28 +69,13 @@ random_effects_dt %>%
   theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
   scale_y_continuous(limits = c(0, 40))
 ```
-```{r}
-responses_dt %>% group_by(item_ID) %>% 
-  ggplot(aes(x=STIMULATION, y=item_ID, color=item_ID)) + 
-  geom_boxplot(show.legend = FALSE)
-```
-```{r}
-library('ggridges')
 
-responses_dt %>% group_by(item_ID) %>%
-  ggplot(aes(x=STIMULATION, y=item_ID, fill=item_ID)) +
-  geom_density_ridges(show.legend=FALSE)
-
+```{r}
 responses_dt %>% group_by(item_ID) %>%
   ggplot(aes(x=STIMULATION, y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
   stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
   scale_fill_viridis_c(option="C") +
-  theme_joy()
-
-responses_dt %>% group_by(item_ID) %>%
-  ggplot(aes(x=STIMULATION, y=item_ID, fill=stat(x))) +
-  geom_density_ridges_gradient(show.legend=FALSE) +
-  scale_fill_viridis_c(option="C")
+  theme_ridges()
 ```
 
 
@@ -97,13 +83,10 @@ responses_dt %>% group_by(item_ID) %>%
 responses_dt <- as.data.frame(responses_dt)
 
 list_of_value_by_song_plots <- lapply(3:12, function(i){
-  ggplot(responses_dt, aes(x=responses_dt[,i], y=item_ID, color=item_ID)) +
-    geom_boxplot(show.legend=FALSE)
-})
-
-list_of_value_by_song_plots <- lapply(3:12, function(i){
-  ggplot(responses_dt, aes(x=responses_dt[,i], y=item_ID, color=item_ID)) +
-    geom_boxplot(show.legend=FALSE)
+  ggplot(responses_dt, aes(x=responses_dt[,i], y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
+  stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
+  scale_fill_viridis_c(option="C") +
+  theme_ridges()
 })
 
 values<-c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", 
@@ -152,25 +135,39 @@ server <- function(input, output, session){
   
   # render the plots; alpha distribution by n
   output$value_by_song_plots <- renderPlot({
+      #note that plots are pre-computed
       list_of_value_by_song_plots[input$choice]
   })
   
-  #display_summary <- function() {
-  #  item_mean %>% select(item_ID, input$choice)
-  #  item_sd   %>% select(item_ID, input$choice)
-  #}
-  
+  # write a function that receives the input
+  # and then filters dataframe column
   display_summary <- function(dt) {
     dt %>% select(stat, item_ID, input$choice)
   }
   
+  #print table with item means
   output$item_mean <- renderDataTable({display_summary(item_mean)})
+  
+  #print table with item SDs
   output$item_sd   <- renderDataTable({display_summary(item_sd)})
-  
-  #output$item_mean <- renderDataTable(item_mean)
-  #output$item_sd <- renderDataTable(item_sd)
-  
+
   }
 shinyApp(ui=ui, server=server)
+```
+```{r}
+for(i in length(colnames(item_mean)))
+
+mean(item_mean$ACHIEVEMENT)
+mean(item_mean$BENEVOLENCE)
+mean(item_mean$CONFORMITY)
+mean(item_mean$HEDONISM)
+mean(item_mean$POWER)
+mean(item_mean$SECURITY)
+mean(item_mean$SELF)
+mean(item_mean$STIMULATION)
+mean(item_mean$TRADITION)
+mean(item_mean$UNIVERSALISM)
+
+colnames(item_mean)
 ```
 

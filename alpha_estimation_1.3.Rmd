@@ -206,7 +206,7 @@ minimum_n_by_alpha <- function(alpha_tibble, alpha_threshold){
 ```
 
 ```{r}
-minimum_n_summary_table <- do.call(rbind, lapply(list_of_alpha_summaries, minimum_n_by_alpha, .8)) %>% setDT(., keep.rownames=TRUE)
+minimum_n_summary_table <- do.call(rbind, lapply(list_of_alpha_summaries, minimum_n_by_alpha, .7)) %>% setDT(., keep.rownames=TRUE)
 minimum_n_summary_table
 ```
 

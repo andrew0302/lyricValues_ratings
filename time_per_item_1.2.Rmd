@@ -78,9 +78,10 @@ both[, diff := (last_click - first_click)]
 
 rm(first, last, clicks_dt, responses_dt)
 ```
+
+
 ```{r}
-both_plot <- both[diff > 0 & diff < 900,] %>% 
-  #ggplot(., aes(y=variable, x=diff)) +
+both_plot <- both[] %>% 
   ggplot(., aes(x=diff, y=variable, color = variable)) +
   geom_boxplot(show.legend=FALSE)
 
@@ -150,9 +151,6 @@ summary_dt[order(-sd),]
 ui <- fluidPage(
   titlePanel("Time Taken by Song (in seconds)"),
   
-  # drop down menu to display the values
-  #selectInput('value', 'select value', choice = c(names)), 
-  
   #plot this thing called 'alpha_plot'
   plotOutput('both_plot'),
   
@@ -165,8 +163,7 @@ server <- function(input, output, session){
   # render the plots; alpha distribution by n
   output$both_plot <- renderPlot({
     both[diff > 0 & diff < 900,] %>% 
-    #ggplot(., aes(y=variable, x=diff)) +
-    ggplot(., aes(x=diff, y=variable, color = variable)) +
+    ggplot(., aes(x=log(diff), y=variable, color = variable)) +
     geom_boxplot(show.legend=FALSE) +
   
     #this adds the label to the title
