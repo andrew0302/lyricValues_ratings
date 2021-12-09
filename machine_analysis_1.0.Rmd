@@ -23,6 +23,20 @@ machine_dt <- fread(here(data_file_path, file))
 ```
 
 ```{r}
+#set column names to upper case
+setnames(machine_dt, toupper(names(machine_dt)))
 
+#set column names and order to match participant data set
+setnames(machine_dt, "SONG_ID", "item_ID")
+setnames(machine_dt, "SELF-DIRECTION", "SELF")
+machine_dt[, machine_ID := ..file][,V1:=NULL]
+
+machine_dt <- machine_dt[, c("machine_ID", "item_ID", "ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")]
+```
+
+```{r}
+value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")
+
+machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
 ```
 
