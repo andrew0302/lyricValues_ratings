@@ -71,10 +71,10 @@ random_effects_dt %>%
 ```
 
 ```{r}
-#responses_dt %>% group_by(item_ID) %>%
-#  ggplot(aes(x=STIMULATION, y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
-#  stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
-#  scale_fill_viridis_c(option="C") +
+responses_dt %>% group_by(item_ID) %>%
+  ggplot(aes(x=STIMULATION, y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
+  stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
+  scale_fill_viridis_c(option="C") #+
 #  theme_ridges()
 ```
 
@@ -85,8 +85,8 @@ responses_dt <- as.data.frame(responses_dt)
 list_of_value_by_song_plots <- lapply(3:12, function(i){
   ggplot(responses_dt, aes(x=responses_dt[,i], y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
   stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
-  scale_fill_viridis_c(option="C") +
-  theme_ridges()
+  scale_fill_viridis_c(option="C") #+
+#  theme_ridges()
 })
 
 values<-c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", 

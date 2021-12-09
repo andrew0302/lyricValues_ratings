@@ -1,0 +1,28 @@
+---
+title: "data_file_reshape_m"
+author: "Andrew M. Demetriou"
+date: "12/9/2021"
+---
+
+```{r}
+library('here')            # file logistics
+library('data.table')      # data manipulation
+library('dplyr')           # data manipulation
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data/outputs")
+
+# files
+data_files <- list.files(data_file_path)
+
+file <- data_files[1]
+
+machine_dt <- fread(here(data_file_path, file))
+```
+
+```{r}
+
+```
+

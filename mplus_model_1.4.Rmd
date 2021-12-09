@@ -1,0 +1,317 @@
+---
+title: "mPlus_model"
+author: "Andrew M. Demetriou"
+date: "7/2/2021"
+---
+```{r, include=FALSE}
+#list.of.packages <- c("here", "tidyverse", "dplyr", "MplusAutomation", "texreg", "tidySEM", "corrplot", "faux")
+#new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+#if(length(new.packages)) install.packages(new.packages)
+
+library("here")            # file logistics
+library("stringr")         # detect strings in raw output
+library("tidyverse")       # data wrangling 
+library("dplyr")           # data wrangling
+library("texreg")          # output formatting
+library("corrplot")        # visualization
+library("MplusAutomation") # Mplus integration
+
+# ensure this script returns the same results on each run
+set.seed(42) #the answer to life, the universe, and everything
+
+# custom simulation function:
+source("big_bad_sim_function_3.2.R")
+```
+
+simulate dataset using sim function:
+```{r}
+machines_as_fixed <- my_sim_data_dt(
+  n_items = 400, 
+  n_ratings = 5, 
+  n_subj = 800, 
+  n_machines = 8, 
+  n_trials = 10, 
+  mu = c(3.08, 4.29, 3.63, 2.59, 4.60, 3.98, 4.66, 3.92, 4.26, 4.47),
+  SD = c(1.3, 1.11, 1.13, 1.11, .94, .87, .88, 1.34, 1.27, 1.13),
+  tau_0 = 4,   # by-subject random intercept sd
+  tau_0_m = 2, # by-machine random intercept sd)
+  process = "fixed")
+
+machines_as_subjects <- my_sim_data_dt(
+  n_items = 400, 
+  n_ratings = 5, 
+  n_subj = 800, 
+  n_machines = 8, 
+  n_trials = 10, 
+  mu = c(3.08, 4.29, 3.63, 2.59, 4.60, 3.98, 4.66, 3.92, 4.26, 4.47),
+  SD = c(1.3, 1.11, 1.13, 1.11, .94, .87, .88, 1.34, 1.27, 1.13),
+  tau_0 = 4,   # by-subject random intercept sd
+  tau_0_m = 2, # by-machine random intercept sd)
+  process = "subjects")
+```
+
+format data for mplus:
+```{r}
+#format ID columns:
+#sim$item_ID <- as.integer(sim$item_ID)
+#sim$subject_ID <- as.integer(sim$subject_ID)
+#prepareMplusData(sim, "Mplus/sim.dat")
+```
+
+```{r}
+#the rdata function doesn't like my variable names; renaming:
+colnames(machines_as_fixed) <- c(
+  #item and participant ID variables 
+  "item_ID", "subject_ID",
+  
+  #participant ratings
+  "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", 
+  
+  #machine ratings, n_machines per value
+  paste0("z", as.character(seq(length(colnames(machines_as_fixed))-12))))
+```
+
+```{r}
+#the rdata function doesn't like my variable names; renaming:
+colnames(machines_as_subjects) <- c(
+  #item and participant ID variables
+  #ishuman is a dummy var indicating 0 for machines, 1 for humans
+  "item_ID", "ishuman", "subject_ID",
+
+  #ratings
+  "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10")
+```
+
+```{r}
+#for variables that only appear in a between section, use
+#correlation model`
+
+model <- mplusObject(
+  TITLE = "model;",
+  MISSING = ".;",
+  VARIABLE = "
+  USEVARIABLES = subject_ID item_ID y1-y10 z1-z80;
+  CLUSTER = subject_ID item_ID;
+  BETWEEN = (item_ID) z1-z80;",
+  
+  ANALYSIS = "
+  TYPE = CROSSCLASSIFIED RANDOM;
+  ESTIMATOR = BAYES;
+  FBITERATIONS = 5000;
+  ALGORITHM = GIBBS(RW);
+  PROCESSORS = 10;",
+  
+  MODEL = "
+  
+  %within% 
+  y1-y10;
+  
+  %between item_ID% 
+  y1-y10; [y1-y10];  
+  y1 WITH y2-y10;
+  y2 WITH y3-y10;
+  y3 WITH y4-y10;
+  y4 WITH y5-y10;
+  y5 WITH y6-y10;
+  y6 WITH y7-y10;
+  y7 WITH y8-y10;
+  y8 WITH y9-y10;
+  y9 WITH y10;
+
+  m1  BY   z1-z8;
+  m2  BY  z9-z16;
+  m3  BY z17-z24;
+  m4  BY z25-z32;
+  m5  BY z33-z40;
+  m6  BY z41-z48;
+  m7  BY z49-z56;
+  m8  BY z57-z64;
+  m9  BY z65-z72;
+  m10 BY z73-z80;
+  
+  m1-m10@1;
+ 
+ m1 WITH m2-m10;
+ m2 WITH m3-m10;
+ m3 WITH m4-m10;
+ m4 WITH m5-m10;
+ m5 WITH m6-m10;
+ m6 WITH m7-m10;
+ m7 WITH m8-m10;
+ m8 WITH m9-m10;
+ m9 WITH m10;
+
+  %between subject_ID% 
+  y1-y10; [y1-y10@0];", 
+  
+  OUTPUT = "Tech1 Tech8 standardized cinterval(hpd)",
+  
+  rdata = as.data.frame(machines_as_fixed)
+)
+
+#fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
+#fit$results$errors
+#fit$results$warnings
+#readModels("sim.out")
+```
+
+```{r}
+start.time <- Sys.time()
+fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
+end.time <- Sys.time()
+time.taken_1 <- round(end.time - start.time, 2)
+fit$results$errors
+fit$results$warnings
+```
+
+```{r}
+parameters <- data.frame(fit$results$parameters$stdyx.standardized)
+DIC <- fit$results$summaries$DIC
+#results_correlations <- parameters[grep('Z1.WITH', parameters$paramHeader), ]
+#results_variances <- parameters[grep('Variances', parameters$paramHeader), ]
+#write.csv(parameters, "parameters.csv") 
+```
+
+
+```{r}
+trash <- c(list.files(pattern = ".dat|.gh5"), list.files(pattern = ".inp|.out"))
+file.remove(trash)
+```
+
+# estimate the difference between humans and machines per value
+
+```{r}
+model <- mplusObject(
+  TITLE = "model;",
+  MISSING = ".;",
+  VARIABLE = "
+  USEVARIABLES = subject_ID ishuman item_ID y1-y10;
+  CLUSTER = subject_ID item_ID;
+  BETWEEN = (item_ID) ishuman;",
+  
+  ANALYSIS = "
+  TYPE = CROSSCLASSIFIED RANDOM;
+  ESTIMATOR = BAYES;
+  FBITERATIONS = 5000;
+  ALGORITHM = GIBBS(RW);
+  PROCESSORS = 10;",
+  
+  MODEL = "
+  
+  %within% 
+  y1-y10;
+  
+  %between item_ID% 
+  y1-y10; [y1-y10];  
+  
+  y1 WITH y2-y10;
+  y2 WITH y3-y10;
+  y3 WITH y4-y10;
+  y4 WITH y5-y10;
+  y5 WITH y6-y10;
+  y6 WITH y7-y10;
+  y7 WITH y8-y10;
+  y8 WITH y9-y10;
+  y9 WITH y10;
+  
+  y1-y10 ON ishuman;
+  
+  %between subject_ID% 
+  y1-y10; [y1-y10@0];", 
+  
+  OUTPUT = "Tech1 Tech8 standardized cinterval(hpd)",
+  
+  rdata = machines_as_subjects
+)
+```
+
+```{r}
+start.time <- Sys.time()
+fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
+end.time <- Sys.time()
+time.taken_1 <- round(end.time - start.time, 2)
+fit$results$errors
+fit$results$warnings
+
+parameters <- data.frame(fit$results$parameters$stdyx.standardized)
+DIC <- fit$results$summaries$DIC
+```
+
+
+# estimate the standard deviations of the subject, machine, and item intercepts
+
+```{r}
+# create two dataframes, one for machines and one for humans
+machines <- machines_as_subjects %>% filter(group==0)
+subjects <- machines_as_subjects %>% filter(group==1)
+
+#create list of dataframes
+data_frames <- makeNamedList(machines, subjects)
+
+#run using lmer
+descriptives <- list_of_dfs_results(data_frames)
+```
+
+```{r}
+#the rdata function doesn't like my variable names; renaming:
+colnames(machines_as_subjects) <- c(
+  #item and participant ID variables
+  #ishuman is a dummy var indicating 0 for machines, 1 for humans
+  "item_ID", "ishuman", "subject_ID",
+
+  #ratings
+  "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10")
+```
+
+```{r}
+# create two dataframes, one for machines and one for humans
+machines_df <- machines_as_subjects %>% filter(ishuman==0)
+subjects_df <- machines_as_subjects %>% filter(ishuman==1)
+```
+
+```{r}
+#run null model using Mplus
+model <- mplusObject(
+  TITLE = "model;",
+  MISSING = ".;",
+  VARIABLE = "
+  USEVARIABLES = subject_ID item_ID y1-y10;
+  CLUSTER = subject_ID item_ID;",
+  
+  ANALYSIS = "
+  TYPE = CROSSCLASSIFIED RANDOM;
+  ESTIMATOR = BAYES;
+  FBITERATIONS = 5000;
+  ALGORITHM = GIBBS(RW);
+  PROCESSORS = 10;",
+  
+  MODEL = "
+  
+  %within% 
+  y1-y10;
+  
+  %between item_ID% 
+  y1-y10; [y1-y10];  
+  
+  %between subject_ID% 
+  y1-y10; [y1-y10@0];", 
+  
+  OUTPUT = "Tech1 Tech8 standardized cinterval(hpd)",
+  
+  rdata = machines_df
+)
+```
+
+```{r}
+start.time <- Sys.time()
+fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
+end.time <- Sys.time()
+time.taken_1 <- round(end.time - start.time, 2)
+fit$results$errors
+fit$results$warnings
+
+parameters <- data.frame(fit$results$parameters$unstandardized)
+DIC <- fit$results$summaries$DIC
+```
+
+
