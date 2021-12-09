@@ -165,7 +165,11 @@ make_list_of_alpha_tibbles_dt <- function(
 ```
 
 ```{r}
-list_of_alpha_tibbles <- make_list_of_alpha_tibbles_dt(responses_dt, 30)
+#list_of_alpha_tibbles <- make_list_of_alpha_tibbles_dt(responses_dt, 30)
+```
+```{r}
+#save(list_of_alpha_tibbles, file = "list_of_alpha_tibbles.Rds")
+load("list_of_alpha_tibbles.Rds")
 ```
 
 ```{r}
@@ -192,9 +196,8 @@ list_of_alpha_summaries <-lapply(list_of_alpha_tibbles, summarize_alpha_tibble)
 ```
 
 ```{r}
-alpha_summary <- list_of_alpha_summaries[[1]]
+#alpha_summary <- list_of_alpha_summaries[[1]]
 ```
-
 
 ```{r}
 minimum_n_by_alpha <- function(alpha_tibble, alpha_threshold){
@@ -214,7 +217,7 @@ minimum_n_summary_table
 ```{r}
 plot_alphas <- function(alpha_dt){
   ggplot(alpha_dt) +
-    geom_vline(xintercept = 0.8, color = "grey50" ) +
+    geom_vline(xintercept = 0.7, color = "grey50" ) +
     geom_density(aes(alpha, colour = as.factor(n))) + 
     xlim(0, 1) +
     labs(title = "Distribution of Alphas by Rater N\n", 

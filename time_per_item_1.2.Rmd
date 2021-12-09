@@ -4,7 +4,6 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
-
 ```{r setup, include=FALSE}
 library('here')       # file logistics
 library('data.table') # data manipulation
@@ -21,30 +20,70 @@ data_file_path <- here("data")
 # create a list with all of the files
 data_files <- list.files(data_file_path)
 
-# read in qualtrics data file
-responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+# name specific files
+## note: PROLIFIC DATA NOT ON GITHUB
+qualtrics_file <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
+prolific_file  <- "prolific_export_619f3c47f6b78ee67274583e.csv"
 
-# remove junk on first two rows
-responses_dt <- responses_dt[3:.N]
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, qualtrics_file)) %>%
+  #remove junk on first two rows
+  .[3:.N]
 
 # get question wording:
-questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
-```
+questions <- colnames(fread(here(data_file_path, qualtrics_file), skip=1))
 
+# read in prolific data file
+demogs_dt <- fread(here(data_file_path, prolific_file))
 
-```{r}
+#filter out incomplete responses
+demogs_dt <- demogs_dt %>%
+  .[, PROLIFIC_PID := participant_id] %>%
+  .[!is.na(demogs_dt$completed_date_time),]
+
+# merge datasets: PROLIFIC DATA NOT ON GITHUB
+responses_dt <- responses_dt[demogs_dt, on=.(PROLIFIC_PID)]
+
 # dataframe of only participants that have agreed to participate
 responses_dt <- responses_dt[`Participant Consent`=='agree', ]
 
-# logical vector of matches to: 
-# 1) either first or last click for a question
-# 2) participant ID
-clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(responses_dt)) 
+#rm(demogs_dt)
 ```
+
+Both prolific and qualtrics have their own measures of time taken for the entire survey. 
+
+```{r}
+#rename qualtrics duration column
+responses_dt$duration <- as.numeric(responses_dt$`Duration (in seconds)`) 
+
+#define columns to plot
+columns <- c("duration", "PROLIFIC_PID", "time_taken", "Sex", "age")
+
+#plot survey duration according to qualtrics
+duration_plot <- responses_dt %>% select(columns) %>%
+  ggplot(., aes(x=duration, y=age, color=Sex)) +
+  geom_point()
+duration_plot
+
+#plot survey duration according to prolific
+time_taken_plot <- responses_dt[!Sex=='CONSENT REVOKED'] %>% .[time_taken < 100000] %>%select(columns) %>%
+  ggplot(., aes(x=time_taken, y=age, color=Sex)) +
+  geom_point()
+time_taken_plot
+
+outliers_dt <- responses_dt[, c("PROLIFIC_PID", "time_taken", "duration")]
+outliers_dt[time_taken>50000 | duration>5000]
+```
+Here I select rows that have the timing information for each of the questions. Specifically, I select rows with that contain a) the first click on the page, and b) the last click on the page. I then subtract the first click time from the last click time to get the time spent on the page. 
 
 According to: https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/question-types-guide/advanced/timing/, the time is in seconds. 
 
 ```{r}
+# logical vector of matches to: 
+# 1) either first or last click for a question
+# 2) participant ID
+clicks <- grepl("First.Click|Last.Click|PROLIFIC_PID", colnames(responses_dt)) 
+
 #subset data based on clicks vector
 clicks_dt <- responses_dt[, ..clicks]
 
@@ -73,25 +112,38 @@ first$first_click <- as.numeric(first$first_click)
 
 #merge two smaller dts
 both <- first[last, on = .(PROLIFIC_PID, variable)]
+
 #compute difference
 both[, diff := (last_click - first_click)]
 
-rm(first, last, clicks_dt, responses_dt)
+rm(first, last, clicks_dt)
 ```
 
+Here I plot the time taken in seconds for each question block. 
+Two observations appear to be clear outliers. 
+At 9000+ seconds, this is likely an issue with recording the time taken perhaps by the Qualtrics platform itself. 
 
 ```{r}
-both_plot <- both[] %>% 
+both_plot <- both %>% 
   ggplot(., aes(x=diff, y=variable, color = variable)) +
   geom_boxplot(show.legend=FALSE)
 
 both_plot
 ```
+Here I table the time taken per observation in descending order:
 
 ```{r}
 both[order(-diff),]
 ```
+The mean time taken is 44.76 seconds, with an SD of 101.7. 
+Removing outliers above 900 seconds, gives a mean of 42.76, with an SD of 39.53. 
+
+Thus I conclude that a conservative time estimate per stimulus rating is 83 = 43 + 40 seconds. 
+
 ```{r}
+both %>%
+  summarize(mean = mean(diff), sd = sd(diff))
+
 #these have outliers. when removed the values look more normal
 both[variable=='55713838-m_',][diff<9000] %>%
   summarize(mean = mean(diff), sd = sd(diff))
@@ -102,6 +154,26 @@ both[variable=='2241308-m_',][diff<2000] %>%
 both[variable=='205113268-m_',][diff<900]  %>%
   summarize(mean = mean(diff), sd = sd(diff))
 ```
+To more closely examine whether older people take more time, I plot the time taken variable against age:
+
+```{r}
+both <- both[demogs_dt[, c("Sex", "age", "PROLIFIC_PID")], on=.(PROLIFIC_PID)]
+
+duration_plot <- both[diff<1000] %>% 
+  ggplot(., aes(x=diff, y=age, color=Sex)) +
+  geom_point()
+
+duration_plot
+```
+
+No reason to really expext sex differences
+```{r}
+both[diff<900] %>% ggplot(aes(x=diff, color=Sex, fill=Sex)) +
+  geom_histogram() +
+  facet_wrap(~Sex)
+```
+
+Here I build a data table of the mean time taken per question block, excluding outlier defined as > 900 seconds. 
 
 ```{r}
 summary_dt <- both %>% group_by(variable) %>% summarize(mean = mean(diff), sd = sd(diff)) %>% ungroup()
@@ -114,7 +186,10 @@ summary_dt <- both[diff<900] %>% group_by(variable) %>% summarize(mean = mean(di
 
 #make data table
 setDT(summary_dt)
+
+summary_dt
 ```
+
 Song # 151085454
 
 "I think cancers gonna kill me 
@@ -141,6 +216,9 @@ Song # 99567690
  Every single day - single hour 
  I can see your face - single day"
 
+
+A conservative estimate for the time it takes to complete the lyrics block is 190 seconds (M=105.47, SD=84).
+The lyrics items look rather uniform in terms of time taken. I display the two with the highest values above. 
  
 ```{r}
 summary_dt[order(-mean),]
