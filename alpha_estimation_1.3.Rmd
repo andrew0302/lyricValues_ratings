@@ -175,7 +175,7 @@ load("list_of_alpha_tibbles.Rds")
 ```{r}
 summarize_alpha_tibble <- function(
   alpha_tibble, 
-  alpha_threshold=0.8
+  alpha_threshold=0.7
 ){
 
   alpha_tibble %>%
@@ -184,7 +184,7 @@ summarize_alpha_tibble <- function(
     summarise(
       `median alpha` = round(quantile(alpha, .5), 2),
       `90% alpha >` = round(quantile(alpha, .1), 2),
-      `alpha >= 0.8` = round(mean(alpha >= alpha_threshold), 2),
+      `alpha >= 0.7` = round(mean(alpha >= alpha_threshold), 2),
       `median r` = round(quantile(r, .5), 2),
       `90% r >` = round(quantile(r, .1), 2)
     )

@@ -1,5 +1,5 @@
 ---
-title: "descriptives_function"
+title: "item analysis"
 author: "andrew demetriou"
 date: "07/12/2021"
 ---
@@ -78,7 +78,6 @@ responses_dt %>% group_by(item_ID) %>%
 #  theme_ridges()
 ```
 
-
 ```{r}
 responses_dt <- as.data.frame(responses_dt)
 
@@ -112,6 +111,23 @@ setnames(item_mean, "Group.1", "item_ID")
 setnames(item_sd,   "Group.1", "item_ID")
 
 responses_dt <- as.data.frame(responses_dt)
+```
+
+```{r}
+for(i in length(colnames(item_mean)))
+
+mean(item_mean$ACHIEVEMENT)
+mean(item_mean$BENEVOLENCE)
+mean(item_mean$CONFORMITY)
+mean(item_mean$HEDONISM)
+mean(item_mean$POWER)
+mean(item_mean$SECURITY)
+mean(item_mean$SELF)
+mean(item_mean$STIMULATION)
+mean(item_mean$TRADITION)
+mean(item_mean$UNIVERSALISM)
+
+colnames(item_mean)
 ```
 
 ```{r}
@@ -155,19 +171,95 @@ server <- function(input, output, session){
 shinyApp(ui=ui, server=server)
 ```
 ```{r}
-for(i in length(colnames(item_mean)))
+item_plot_dt <- as.data.table(responses_dt) %>% melt(., id.vars = c("participant_ID", "item_ID"), measure.vars = c("ACHIEVEMENT","BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM"))
 
-mean(item_mean$ACHIEVEMENT)
-mean(item_mean$BENEVOLENCE)
-mean(item_mean$CONFORMITY)
-mean(item_mean$HEDONISM)
-mean(item_mean$POWER)
-mean(item_mean$SECURITY)
-mean(item_mean$SELF)
-mean(item_mean$STIMULATION)
-mean(item_mean$TRADITION)
-mean(item_mean$UNIVERSALISM)
-
-colnames(item_mean)
+items <- unique(item_plot_dt$item_ID)
 ```
+
+```{r}
+item_plot_function <- function(item_plot_dt, item){
+  item_plot_dt %>% filter(., item_ID == item) %>%
+    ggplot(., aes(x=value, y=variable, fill=0.5 -abs(0.5 -stat(ecdf)))) +
+    stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
+    scale_fill_viridis_c(option="C")
+}
+#item_plot_function(item_plot_dt, '151085454')
+```
+
+```{r}
+list_of_song_by_value_plots <- lapply(items, function(i) item_plot_function(item_plot_dt, i))
+
+names(list_of_song_by_value_plots) <- items
+```
+
+```{r}
+confidence_dt <- fread(here(data_file_path, file_name))
+
+confidence_ratings <- grepl("-c|PROLIFIC_PID", colnames(confidence_dt))
+
+confidence_dt <- confidence_dt[,..confidence_ratings][3:.N]
+```
+
+```{r}
+confidence_dt[confidence_dt == "Extremely unconfident"] <- 1
+confidence_dt[confidence_dt == "Very unconfident"] <- 2
+confidence_dt[confidence_dt == "Somewhat unconfident"] <- 3
+confidence_dt[confidence_dt == "Neither confident nor unconfident"] <- 4
+confidence_dt[confidence_dt == "Somewhat confident"] <- 5
+confidence_dt[confidence_dt == "Very confident"] <- 6
+confidence_dt[confidence_dt == "Extremely confident"] <- 7
+```
+
+```{r}
+#colnames <- colnames(confidence_dt) 
+#gsub("-c", "", colnames)
+colnames(confidence_dt) <- gsub("-c", "", colnames(confidence_dt))
+cols <- colnames(confidence_dt)
+cols <- cols[1:length(cols)-1]
+```
+
+```{r}
+confidence_dt <- melt(confidence_dt, id.vars = c("PROLIFIC_PID"), measure.vars = 1:20) 
+```
+```{r}
+confidence_dt %>% 
+  ggplot(aes(x=as.numeric(value), y=variable, fill=0.5 -abs(0.5 -stat(ecdf)))) +
+    stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
+    scale_fill_viridis_c(option="C") +
+  xlab("Self-Reported Confidence in annotations")
+```
+
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Distribution of Ratings per Value by Song"),
+  
+  # drop down menu to display the values
+  selectInput('choice', 'select song', choice = items), 
+  
+  #plot song plot
+  plotOutput('song_by_value_plots'),
+  
+)
+
+server <- function(input, output, session){
+  
+  # render the plots; alpha distribution by n
+  output$song_by_value_plots <- renderPlot({
+      #note that plots are pre-computed
+      list_of_song_by_value_plots[input$choice]
+  })
+  
+  # write a function that receives the input
+  # and then filters dataframe column
+  display_summary <- function(dt) {
+    dt %>% select(stat, item_ID, input$choice)
+  }
+
+  }
+shinyApp(ui=ui, server=server)
+```
+
+
+
 

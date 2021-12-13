@@ -9,6 +9,7 @@ library('here')       # file logistics
 library('data.table') # data manipulation
 library('dplyr')      # data manipulation
 library('ggplot2')    # data visualization
+library('gridExtra')  # data visualization
 library('shiny')      # interactive visualization
 library('DT')         # interactive visualization
 ```
@@ -50,6 +51,8 @@ responses_dt <- responses_dt[`Participant Consent`=='agree', ]
 #rm(demogs_dt)
 ```
 
+5fbc7c8b02bb0c14bfbe08ef
+
 Both prolific and qualtrics have their own measures of time taken for the entire survey. 
 
 ```{r}
@@ -62,14 +65,19 @@ columns <- c("duration", "PROLIFIC_PID", "time_taken", "Sex", "age")
 #plot survey duration according to qualtrics
 duration_plot <- responses_dt %>% select(columns) %>%
   ggplot(., aes(x=duration, y=age, color=Sex)) +
-  geom_point()
+  geom_point() +
+  xlab("Time (in seconds): Qualtrics")
 duration_plot
 
 #plot survey duration according to prolific
 time_taken_plot <- responses_dt[!Sex=='CONSENT REVOKED'] %>% .[time_taken < 100000] %>%select(columns) %>%
   ggplot(., aes(x=time_taken, y=age, color=Sex)) +
-  geom_point()
+  geom_point() +
+  xlab("Time (in seconds): Prolific") +
+  scale_x_continuous(limits = c(1000, 12500))
 time_taken_plot
+
+grid.arrange(duration_plot, time_taken_plot, ncol=2)
 
 outliers_dt <- responses_dt[, c("PROLIFIC_PID", "time_taken", "duration")]
 outliers_dt[time_taken>50000 | duration>5000]
@@ -126,7 +134,8 @@ At 9000+ seconds, this is likely an issue with recording the time taken perhaps 
 ```{r}
 both_plot <- both %>% 
   ggplot(., aes(x=diff, y=variable, color = variable)) +
-  geom_boxplot(show.legend=FALSE)
+  geom_boxplot(show.legend=FALSE) +
+  xlab("Time taken (In seconds)")
 
 both_plot
 ```
@@ -141,8 +150,16 @@ Removing outliers above 900 seconds, gives a mean of 42.76, with an SD of 39.53.
 Thus I conclude that a conservative time estimate per stimulus rating is 83 = 43 + 40 seconds. 
 
 ```{r}
-both %>%
-  summarize(mean = mean(diff), sd = sd(diff))
+no_outliers_removed <- both %>%
+  summarize(mean = mean(diff), median = median(diff), sd = sd(diff))
+outliers_less_than_900 <- both[diff<900] %>%
+  summarize(mean = mean(diff), median=median(diff), sd = sd(diff))
+
+central_tendency <- rbind(no_outliers_removed, outliers_less_than_900)
+central_tendency$outliers <- c("no outliers removed", "outliers set at < 900")
+central_tendency <- central_tendency %>% select(outliers, everything())
+central_tendency
+
 
 #these have outliers. when removed the values look more normal
 both[variable=='55713838-m_',][diff<9000] %>%
@@ -171,7 +188,24 @@ No reason to really expext sex differences
 both[diff<900] %>% ggplot(aes(x=diff, color=Sex, fill=Sex)) +
   geom_histogram() +
   facet_wrap(~Sex)
+
+both[diff<900] %>% ggplot(aes(x=diff)) +
+  geom_histogram(bins = 30) +
+  geom_vline(aes(xintercept = median(diff)), color="red") +
+  annotate(geom="text", x=200, y=4000, label="Median = 31.8") +
+  xlab("Time (in seconds")
 ```
+
+```{r}
+library(robustbase)
+
+adjbox(both$diff)
+
+both_outlier <- both[diff<165 & diff > 15]
+adjbox(both_outlier$diff)
+```
+
+
 
 Here I build a data table of the mean time taken per question block, excluding outlier defined as > 900 seconds. 
 
@@ -241,7 +275,7 @@ server <- function(input, output, session){
   # render the plots; alpha distribution by n
   output$both_plot <- renderPlot({
     both[diff > 0 & diff < 900,] %>% 
-    ggplot(., aes(x=log(diff), y=variable, color = variable)) +
+    ggplot(., aes(x=diff, y=variable, color = variable)) +
     geom_boxplot(show.legend=FALSE) +
   
     #this adds the label to the title
