@@ -11,7 +11,7 @@ library("MplusAutomation") # Mplus integration
 ```
 
 ```{r}
-# path with the actual data
+# path with data
 data_file_path <- here("data/outputs")
 
 # files
@@ -76,5 +76,32 @@ t <- list_of_machine_data_tables[names(list_of_machine_data_tables) %in% file_na
 
 # make a single dataframe from the list
 s <- rbindlist(t, use.names = FALSE, idcol = TRUE)
+```
+
+```{r}
+#list header and tail variants
+variant_list <- c("mxm_faruqi_", "mxm_split_")
+weight_list  <- c("_idf_weight_lyrics.txt", "_uniform_weight_lyrics.txt")
+
+#concatenate head, numbers 1-9, and tail
+file_name_maker <- function(head, tail){
+  lapply(seq(1,9,1), function(i){paste0(head, i, tail)})
+}
+
+#iterate over variant list with first weight 
+list_1 <- lapply(variant_list, function(i){
+  file_name_maker(head=i, tail=weight_list[1])
+  })
+
+#iterate over variant list with second weight 
+list_2 <- lapply(variant_list, function(i){
+  file_name_maker(head=i, tail=weight_list[2])
+  })
+
+#output list of character vectors
+file_name_list <- append(list_1, list_2)  
+
+#remove junk
+rm(list_1, list_2, variant_list, weight_list, file_name_maker)
 ```
 
