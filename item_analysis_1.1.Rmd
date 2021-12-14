@@ -16,8 +16,9 @@ library('shiny')           # interactive visualization
 library('DT')              # interactive tables
 
 library("broom.mixed")     # data wrangling
-library("broom")
+library("broom")           # data wrangling
 library("lme4")            # estimating random effects
+library("MVN")             # testing for multivariate normality
 
 library('parallel')        # set the number of usable cores
 library('future.apply')    # parallelize apply() functions
@@ -31,9 +32,6 @@ future::plan(multisession, workers = workers)
 
 # organize qualtrics output
 source("data_file_re-shape_1.0.R")
-
-# extract random effects and confidence intervals
-source("descriptives_function_1.6.R")
 ```
 
 ```{r}
@@ -48,39 +46,23 @@ responses_dt <- fread(here(data_file_path, file_name)) %>%
   data_file_reshape(., file_name)
 ```
 
-```{r}
-random_effects_dt <- assemble_random_effects_dt(responses_dt)
-```
 
 ```{r}
-random_effects_dt %>%
-  ggplot(aes(model, item_ID, color = model)) +
-  geom_errorbar(aes(ymin = item_ID_lower, ymax = item_ID_higher), position="dodge") +
-  geom_point(size = 2) + 
-  theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
-  scale_y_continuous(limits = c(0, 40))
-```
-
-```{r}
-random_effects_dt %>%
-  ggplot(aes(model, participant_ID, color = model)) +
-  geom_errorbar(aes(ymin = participant_ID_lower, ymax = participant_ID_higher), position="dodge") +
-  geom_point(size = 2) + 
-  theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
-  scale_y_continuous(limits = c(0, 40))
-```
-
-```{r}
-responses_dt %>% group_by(item_ID) %>%
-  ggplot(aes(x=STIMULATION, y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
-  stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
-  scale_fill_viridis_c(option="C") #+
+#code for joy plot of each song by specific value
+#responses_dt %>% group_by(item_ID) %>%
+#  ggplot(aes(x=STIMULATION, y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
+#  stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
+#  scale_fill_viridis_c(option="C") #+
 #  theme_ridges()
 ```
 
+Make a list of plots that display the density plots of a single value for all rated songs:
+
 ```{r}
+# convert to data frame
 responses_dt <- as.data.frame(responses_dt)
 
+# create a list of individual plots for each value
 list_of_value_by_song_plots <- lapply(3:12, function(i){
   ggplot(responses_dt, aes(x=responses_dt[,i], y=item_ID, fill=0.5 -abs(0.5 -stat(ecdf)))) +
   stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
@@ -88,6 +70,7 @@ list_of_value_by_song_plots <- lapply(3:12, function(i){
 #  theme_ridges()
 })
 
+# name each item in the list after the value it represents
 values<-c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", 
           "POWER", "SECURITY", "SELF", "STIMULATION", 
           "TRADITION",  "UNIVERSALISM")
@@ -95,14 +78,19 @@ values<-c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM",
 names(list_of_value_by_song_plots) <- values
 ```
 
+Make a table of descriptives for each song:
+
 ```{r}
+# convert to data table
 responses_dt <- setDT(responses_dt)
 
+# estimate the mean rating of each song / item by value
 item_mean <- aggregate(responses_dt[,3:12], list(responses_dt$item_ID), mean)
 setDT(item_mean)
 item_mean[, stat := 'mean']
 colnames <- colnames(item_mean)
 
+# estimate the sd rating of each song / item by value
 item_sd <- aggregate(responses_dt[,3:12], list(responses_dt$item_ID), sd)
 setDT(item_sd)
 item_sd[, stat := 'sd']
@@ -110,25 +98,11 @@ item_sd[, stat := 'sd']
 setnames(item_mean, "Group.1", "item_ID")
 setnames(item_sd,   "Group.1", "item_ID")
 
+# convert back to data frame
 responses_dt <- as.data.frame(responses_dt)
 ```
 
-```{r}
-for(i in length(colnames(item_mean)))
-
-mean(item_mean$ACHIEVEMENT)
-mean(item_mean$BENEVOLENCE)
-mean(item_mean$CONFORMITY)
-mean(item_mean$HEDONISM)
-mean(item_mean$POWER)
-mean(item_mean$SECURITY)
-mean(item_mean$SELF)
-mean(item_mean$STIMULATION)
-mean(item_mean$TRADITION)
-mean(item_mean$UNIVERSALISM)
-
-colnames(item_mean)
-```
+Dynamic display of the plots and tables:
 
 ```{r}
 ui <- fluidPage(
@@ -170,13 +144,17 @@ server <- function(input, output, session){
   }
 shinyApp(ui=ui, server=server)
 ```
+
+Make a list of plots to display the value ratings for each song:
+
 ```{r}
+# convert to long format
 item_plot_dt <- as.data.table(responses_dt) %>% melt(., id.vars = c("participant_ID", "item_ID"), measure.vars = c("ACHIEVEMENT","BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM"))
 
+# make a character vector of all song IDs
 items <- unique(item_plot_dt$item_ID)
-```
 
-```{r}
+# make a function to plot all the value ratings for each song
 item_plot_function <- function(item_plot_dt, item){
   item_plot_dt %>% filter(., item_ID == item) %>%
     ggplot(., aes(x=value, y=variable, fill=0.5 -abs(0.5 -stat(ecdf)))) +
@@ -184,23 +162,27 @@ item_plot_function <- function(item_plot_dt, item){
     scale_fill_viridis_c(option="C")
 }
 #item_plot_function(item_plot_dt, '151085454')
-```
 
-```{r}
+# make a list of plots, one for each song
 list_of_song_by_value_plots <- lapply(items, function(i) item_plot_function(item_plot_dt, i))
 
+#name each plot after the song item it represents
 names(list_of_song_by_value_plots) <- items
 ```
 
+Make a plot of the confidence scores for each song:
+
 ```{r}
+# read in data frame
 confidence_dt <- fread(here(data_file_path, file_name))
 
+# select columns to keep: '-c' indicates the confidence ratings
 confidence_ratings <- grepl("-c|PROLIFIC_PID", colnames(confidence_dt))
 
+# remove junk on first two rows
 confidence_dt <- confidence_dt[,..confidence_ratings][3:.N]
-```
 
-```{r}
+# convert worded ratings to numbers
 confidence_dt[confidence_dt == "Extremely unconfident"] <- 1
 confidence_dt[confidence_dt == "Very unconfident"] <- 2
 confidence_dt[confidence_dt == "Somewhat unconfident"] <- 3
@@ -208,27 +190,42 @@ confidence_dt[confidence_dt == "Neither confident nor unconfident"] <- 4
 confidence_dt[confidence_dt == "Somewhat confident"] <- 5
 confidence_dt[confidence_dt == "Very confident"] <- 6
 confidence_dt[confidence_dt == "Extremely confident"] <- 7
-```
 
-```{r}
-#colnames <- colnames(confidence_dt) 
-#gsub("-c", "", colnames)
+# reformat column names
 colnames(confidence_dt) <- gsub("-c", "", colnames(confidence_dt))
+
+# make a vector of column names
 cols <- colnames(confidence_dt)
 cols <- cols[1:length(cols)-1]
-```
 
-```{r}
+# pivot to long format
 confidence_dt <- melt(confidence_dt, id.vars = c("PROLIFIC_PID"), measure.vars = 1:20) 
-```
-```{r}
-confidence_dt %>% 
-  ggplot(aes(x=as.numeric(value), y=variable, fill=0.5 -abs(0.5 -stat(ecdf)))) +
-    stat_density_ridges(geom="density_ridges_gradient", calc_ecdf=TRUE, show.legend=FALSE) +
-    scale_fill_viridis_c(option="C") +
-  xlab("Self-Reported Confidence in annotations")
+
+#compute median
+confidence_dt <- as.data.frame(confidence_dt)
+confidence_dt$value <- as.numeric(confidence_dt$value)
+median_confidence <- confidence_dt %>% group_by(variable) %>% summarize(median=median(value, na.rm=TRUE))
 ```
 
+```{r}
+#plot histogram of individual song's confidence ratings
+plot_confidence <- function(song_ID){
+  confidence_dt %>% filter(variable==song_ID) %>%
+    ggplot(aes(x=as.numeric(value))) +
+    geom_histogram(bins=7) +
+    xlab("Self reported Confidence in Ratings") +
+    ylim(c(0, 250))
+}
+
+#make list of confidence histograms
+list_of_confidence_plots <- lapply(items, plot_confidence)
+
+#name each plot in list after the item they represent
+names(list_of_confidence_plots) <- items
+```
+
+
+Dynamic display of results:
 
 ```{r}
 ui <- fluidPage(
@@ -240,9 +237,18 @@ ui <- fluidPage(
   #plot song plot
   plotOutput('song_by_value_plots'),
   
+  #plot confidence ratings
+  plotOutput('confidence_plot')
+  
 )
 
 server <- function(input, output, session){
+  
+  # write a function that receives the input
+  # and then filters dataframe column
+  display_summary <- function(dt) {
+    dt %>% select(stat, item_ID, input$choice)
+  }
   
   # render the plots; alpha distribution by n
   output$song_by_value_plots <- renderPlot({
@@ -250,16 +256,23 @@ server <- function(input, output, session){
       list_of_song_by_value_plots[input$choice]
   })
   
-  # write a function that receives the input
-  # and then filters dataframe column
-  display_summary <- function(dt) {
-    dt %>% select(stat, item_ID, input$choice)
-  }
-
+  output$confidence_plot <- renderPlot({
+    list_of_confidence_plots[input$choice]
+  })
+  
+  
   }
 shinyApp(ui=ui, server=server)
 ```
 
 
+```{r}
+test_dt <- responses_dt %>% select(-participant_ID, -item_ID)
+```
 
+```{r}
+mvn(test_dt, mvnTest=c("mardia"))
+mvn(test_dt, mvnTest=c("hz"))
+mvn(test_dt, mvnTest=c("dh"))
+```
 

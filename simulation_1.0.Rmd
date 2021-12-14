@@ -1,0 +1,48 @@
+---
+title: "simulation"
+author: "andrew demetriou"
+date: "12/14/2021"
+---
+
+```{r}
+# extract random effects and confidence intervals
+source("descriptives_function_1.6.R")
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# file name as a string
+file_name <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, file_name)) %>%
+  data_file_reshape(., file_name)
+```
+
+```{r}
+# compute the random effects for values and songs
+random_effects_dt <- assemble_random_effects_dt(responses_dt)
+```
+
+```{r}
+# plot random effect for item intercepts by value
+random_effects_dt %>%
+  ggplot(aes(model, item_ID, color = model)) +
+  geom_errorbar(aes(ymin = item_ID_lower, ymax = item_ID_higher), position="dodge") +
+  geom_point(size = 2) + 
+  theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
+  scale_y_continuous(limits = c(0, 40))
+```
+
+
+```{r}
+#plot random effects of participant intercepts by value
+random_effects_dt %>%
+  ggplot(aes(model, participant_ID, color = model)) +
+  geom_errorbar(aes(ymin = participant_ID_lower, ymax = participant_ID_higher), position="dodge") +
+  geom_point(size = 2) + 
+  theme(axis.text.x=element_blank(), axis.title.x=element_blank()) +
+  scale_y_continuous(limits = c(0, 40))
+```
