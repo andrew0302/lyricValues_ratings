@@ -29,24 +29,26 @@ names(list_of_machine_data_tables) <- data_files[1:44]
 
 ```{r}
 #set column names to upper case
-setnames(machine_dt, toupper(names(machine_dt)))
+#setnames(machine_dt, toupper(names(machine_dt)))
 
 #set column names and order to match participant data set
-setnames(machine_dt, "SONG_ID", "item_ID")
-setnames(machine_dt, "SELF-DIRECTION", "SELF")
-machine_dt[, machine_ID := ..file][,V1:=NULL]
+#setnames(machine_dt, "SONG_ID", "item_ID")
+#setnames(machine_dt, "SELF-DIRECTION", "SELF")
+#machine_dt[, machine_ID := ..file][,V1:=NULL]
 
-machine_dt <- machine_dt[, c("machine_ID", "item_ID", "ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")]
+#machine_dt <- machine_dt[, c("machine_ID", "item_ID", "ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")]
+
+#value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")
+
+#machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
 ```
 
 ```{r}
-value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")
-
-machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
-```
-
-```{r}
-machine_file_reshape <- function(machine_dt){
+machine_file_reshape <- function(file){
+  
+  #read in data file
+  machine_dt <- fread(here(data_file_path, file))
+  
   #set column names to upper case
   setnames(machine_dt, toupper(names(machine_dt)))
   
@@ -68,5 +70,8 @@ machine_file_reshape <- function(machine_dt){
 }
 ```
 
+```{r}
+list_of_machine_data_tables <- lapply(data_files[1:44], machine_file_reshape)
+```
 
 
