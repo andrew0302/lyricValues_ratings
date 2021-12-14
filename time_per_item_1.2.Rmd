@@ -160,7 +160,6 @@ central_tendency$outliers <- c("no outliers removed", "outliers set at < 900")
 central_tendency <- central_tendency %>% select(outliers, everything())
 central_tendency
 
-
 #these have outliers. when removed the values look more normal
 both[variable=='55713838-m_',][diff<9000] %>%
   summarize(mean = mean(diff), sd = sd(diff))

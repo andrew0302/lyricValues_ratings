@@ -1,5 +1,5 @@
 ---
-title: "data_file_reshape_m"
+title: "machine_file_reshape"
 author: "Andrew M. Demetriou"
 date: "12/9/2021"
 ---
@@ -17,9 +17,14 @@ data_file_path <- here("data/outputs")
 # files
 data_files <- list.files(data_file_path)
 
-file <- data_files[1]
+#file <- data_files[15]
+#machine_dt <- fread(here(data_file_path, file))
 
-machine_dt <- fread(here(data_file_path, file))
+list_of_machine_data_tables <- lapply(data_files[1:44], function(file){
+  fread(here(data_file_path, file))
+})
+
+names(list_of_machine_data_tables) <- data_files[1:44]
 ```
 
 ```{r}
@@ -39,4 +44,29 @@ value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER"
 
 machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
 ```
+
+```{r}
+machine_file_reshape <- function(machine_dt){
+  #set column names to upper case
+  setnames(machine_dt, toupper(names(machine_dt)))
+  
+  #set column names and order to match participant data set
+  setnames(machine_dt, "SONG_ID", "item_ID")
+  setnames(machine_dt, "SELF-DIRECTION", "SELF")
+  
+  #create machine ID column, and erase useless column
+  machine_dt[, machine_ID := ..file][,V1:=NULL]
+
+  #set column order to match participant order
+  machine_dt <- machine_dt[, c("machine_ID", "item_ID", "ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")]
+
+  #names of values  
+  value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")
+
+  #pivot to wide format
+  machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
+}
+```
+
+
 
