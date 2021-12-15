@@ -64,7 +64,9 @@ Merge all data tables into one big table:
 ```{r}
 #merge all datatables (wide format)
 #big_ass_data_table <- setDT(unlist(list_of_machine_data_tables, recursive = FALSE), check.names = TRUE)
-big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), list_of_machine_data_tables)
+
+#this one works:
+#big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), list_of_machine_data_tables)
 ```
 
 Average multiple runs into a single file:
@@ -73,21 +75,25 @@ Average multiple runs into a single file:
 # make a list of strings to represent a series of runs individually because I'm too fucking stupid to figure out how to put it in a function:
 mxm_faruqi_uniform <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_uniform_weight_lyrics.txt")})
 mxm_faruqi_idf     <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_idf_weight_lyrics.txt")})
-mxm_split_uniform  <- lapply(seq(1,9,1), function(i){paste0("mxm_split_", i, "_uniform_weight_lyrics.txt")})
-mxm_split_idf      <- lapply(seq(1,9,1), function(i){paste0("mxm_split_", i, "_idf_weight_lyrics.txt")})
+mxm_split_uniform  <- lapply(seq(1,9,1), function(i){paste0("mxm_split_",   i, "_uniform_weight_lyrics.txt")})
+mxm_split_idf      <- lapply(seq(1,9,1), function(i){paste0("mxm_split_",   i, "_idf_weight_lyrics.txt")})
 
 # create a list of file lists
 file_names <- list(mxm_faruqi_uniform, mxm_faruqi_idf, mxm_split_uniform, mxm_split_idf)
 # name the elements in the list after the machine setup used to run
-names(file_names) <- c("mxm_faruqi_uniform", "mxm_faruqi_idf", "mxm_split_uniform", "mxm_split_idf")
+setup_names <- c("mxm_faruqi_uniform", "mxm_faruqi_idf", "mxm_split_uniform", "mxm_split_idf")
+names(file_names) <- setup_names
 
 #value names
 #values <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM")
+
+#remove junk
+rm(mxm_faruqi_idf, mxm_faruqi_uniform, mxm_split_idf, mxm_split_uniform)
 ```
 
 
 ```{r}
-summarize_machine_run  <- function(list_of_machine_data_tables, file_name){
+summarize_machine_run  <- function(list_of_machine_data_tables=list_of_machine_data_tables, file_name, setup_name){
 
   #select data tables by file name
   data_table <- list_of_machine_data_tables[names(list_of_machine_data_tables) %in% file_name]%>%
@@ -96,10 +102,11 @@ summarize_machine_run  <- function(list_of_machine_data_tables, file_name){
 
   #list of schwartz values
   values <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM")
-
+  
   #make list of column names
   cols <- lapply(values, function(i){
-  paste0(i, "_", names(file_name))
+  #paste0(i, "_", names(file_name))
+  paste0(i, "_", setup_name)
   })
   
   #clean up data_table column names
@@ -129,12 +136,36 @@ summarize_machine_run  <- function(list_of_machine_data_tables, file_name){
 
 ```{r}
 #file_name <- file_names[[1]]
-#t <- summarize_machine_run(list_of_machine_data_tables, file_name)
+#t <- summarize_machine_run(list_of_machine_data_tables, file_names[[1]], setup_names[1])
+#list_of_summarized_machine_runs <- list()
+#list_of_summarized_machine_runs[[1]] <- summarize_machine_run(list_of_machine_data_tables, file_name = file_names[[1]])
 ```
 
 Gather multiple runs of multiple machine setups into a list of summaries
 
 ```{r}
+list_of_summarized_machine_runs <- list()
+for(i in 1:length(file_names)){
+  setup_name <- setup_names[i]
+  file_name <- file_names[[i]]
+  names(file_name) <- names(file_names)[i]
+  machine_runs <- summarize_machine_run(list_of_machine_data_tables, file_name, setup_name)
+  list_of_summarized_machine_runs[[i]] <- machine_runs
+}
+names(list_of_summarized_machine_runs) <- names(file_names)
 
+# remove junk
+rm(file_name, file_names, machine_runs)
+```
+
+
+```{r}
+#list_of_summarized_machine_runs[[1]]
+```
+
+
+```{r}
+#list_of_machine_data_tables <- list_of_machine_data_tables[1:4]
+#cols <- colnames(list_of_machine_data_tables[[1]])
 ```
 
