@@ -1,0 +1,169 @@
+---
+title: "machine_file_reshape"
+author: "Andrew M. Demetriou"
+date: "12/9/2021"
+---
+
+```{r}
+library('here')            # file logistics
+library('data.table')      # data manipulation
+library('dplyr')           # data manipulation
+library('rlang')           # access variables in dplyr work flow
+library("MplusAutomation") # Mplus integration
+```
+
+```{r}
+# path with data
+data_file_path <- here("data/outputs")
+
+# files
+data_files <- list.files(data_file_path)
+```
+
+Read in the raw file, and format data table:
+
+```{r}
+machine_file_reshape <- function(file){
+  
+  #read in data file
+  machine_dt <- fread(here(data_file_path, file))
+  
+  #set column names to upper case
+  setnames(machine_dt, toupper(names(machine_dt)))
+  
+  #set column names and order to match participant data set
+  setnames(machine_dt, "SONG_ID", "item_ID")
+  setnames(machine_dt, "SELF-DIRECTION", "SELF")
+  
+  #create machine ID column, and erase useless column
+  machine_dt[, machine_ID := ..file][,V1:=NULL]
+
+  #set column order to match participant order
+  machine_dt <- machine_dt[, c("machine_ID", "item_ID", "ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")]
+
+  #names of values  
+  value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")
+
+  #pivot to wide format
+  machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
+}
+```
+
+Make a list of formatted data tables from the raw files:
+
+```{r}
+#create list of data tables
+list_of_machine_data_tables <- lapply(data_files[1:44], machine_file_reshape)
+
+#name list
+names(list_of_machine_data_tables) <- data_files[1:44]
+```
+
+Merge all data tables into one big table:
+
+```{r}
+#merge all datatables (wide format)
+#big_ass_data_table <- setDT(unlist(list_of_machine_data_tables, recursive = FALSE), check.names = TRUE)
+big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), list_of_machine_data_tables)
+```
+
+Average multiple runs into a single file:
+
+```{r}
+# make a list of strings to represent a series of runs individually because I'm too fucking stupid to figure out how to put it in a function:
+mxm_faruqi_uniform <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_uniform_weight_lyrics.txt")})
+mxm_faruqi_idf     <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_idf_weight_lyrics.txt")})
+mxm_split_uniform  <- lapply(seq(1,9,1), function(i){paste0("mxm_split_", i, "_uniform_weight_lyrics.txt")})
+mxm_split_idf      <- lapply(seq(1,9,1), function(i){paste0("mxm_split_", i, "_idf_weight_lyrics.txt")})
+
+# create a list of file lists
+file_names <- list(mxm_faruqi_uniform, mxm_faruqi_idf, mxm_split_uniform, mxm_split_idf)
+# name the elements in the list after the machine setup used to run
+names(file_names) <- c("mxm_faruqi_uniform", "mxm_faruqi_idf", "mxm_split_uniform", "mxm_split_idf")
+
+#value names
+#values <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM")
+```
+
+```{r}
+file_name <- file_names[[1]]
+
+data_table <- list_of_machine_data_tables[names(list_of_machine_data_tables) %in% file_names[[1]]] %>%
+  rbindlist(., use.names = FALSE, idcol = TRUE)
+
+r <- lapply(values, function(i){
+  paste0(i, "_", names(file_name))
+})
+
+colnames(data_table) <- c("trial", "item_ID", r[[1]], r[[2]], r[[3]], r[[4]], r[[5]], r[[6]], r[[7]], r[[8]], r[[9]], r[[10]])
+```
+
+```{r}
+data_table %>%
+  group_by(item_ID) %>%
+  summarize(
+    !! r[[1]] := mean(!! rlang::sym(r[[1]])),
+    !! r[[2]] := mean(!! rlang::sym(r[[2]])),
+    !! r[[3]] := mean(!! rlang::sym(r[[3]])),
+    !! r[[4]] := mean(!! rlang::sym(r[[4]])),
+    !! r[[5]] := mean(!! rlang::sym(r[[5]])),
+    !! r[[6]] := mean(!! rlang::sym(r[[6]])),
+    !! r[[7]] := mean(!! rlang::sym(r[[7]])),
+    !! r[[8]] := mean(!! rlang::sym(r[[8]])),
+    !! r[[9]] := mean(!! rlang::sym(r[[9]])),
+    !! r[[10]] := mean(!! rlang::sym(r[[10]])),
+    )
+```
+
+
+```{r}
+summarize_machine_run  <- function(list_of_machine_data_tables, file_name){
+
+  #select data tables by file name
+  data_table <- list_of_machine_data_tables[names(list_of_machine_data_tables) %in% file_name]%>%
+    # bind data tables into a single data table
+    rbindlist(., use.names=FALSE, idcol=TRUE)
+
+  #list of schwartz values
+  values <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM")
+
+  #make list of column names
+  cols <- lapply(values, function(i){
+  paste0(i, "_", names(file_name))
+  })
+  
+  #clean up data_table column names
+  colnames(data_table) <- c(
+    "trial", "item_ID", 
+    cols[[1]], cols[[2]], cols[[3]], cols[[4]], 
+    cols[[5]], cols[[6]], cols[[7]], cols[[8]],
+    cols[[9]], cols[[10]])
+  
+  #summarize runs
+  data_table <- data_table %>%
+    group_by(item_ID) %>%
+    summarize(
+      !! cols[[1]]  := mean(!! rlang::sym(cols[[1]])),
+      !! cols[[2]]  := mean(!! rlang::sym(cols[[2]])),
+      !! cols[[3]]  := mean(!! rlang::sym(cols[[3]])),
+      !! cols[[4]]  := mean(!! rlang::sym(cols[[4]])),
+      !! cols[[5]]  := mean(!! rlang::sym(cols[[5]])),
+      !! cols[[6]]  := mean(!! rlang::sym(cols[[6]])),
+      !! cols[[7]]  := mean(!! rlang::sym(cols[[7]])),
+      !! cols[[8]]  := mean(!! rlang::sym(cols[[8]])),
+      !! cols[[9]]  := mean(!! rlang::sym(cols[[9]])),
+      !! cols[[10]] := mean(!! rlang::sym(cols[[10]])),
+    )
+}
+```
+
+```{r}
+#t <- summarize_machine_run(list_of_machine_data_tables, file_name)
+```
+
+Gather multiple runs of multiple machine setups into a list of summaries
+
+```{r}
+
+```
+
