@@ -11,6 +11,8 @@ library("dplyr")           # data wrangling
 library("texreg")          # output formatting
 library("corrplot")        # visualization
 library("MplusAutomation") # Mplus integration
+library("MVN")             # testing multivariate normality
+library("RVAideMemoire")   # multivariate q-q plot
 
 #organize machine output
 source("machine_file_reshape_1.6.R")
@@ -55,6 +57,11 @@ rm(data_file_path, file_name)
 
 ```{r}
 machines_as_fixed <- merge(x=responses_dt, y=machines_dt, by="item_ID", all.x=TRUE)
+```
+
+```{r}
+mvn(responses_dt[,3:12], multivariatePlot = "q-q")
+RVAideMemoire::mqqnorm(responses_dt[,3:12], main = "Multi-normal Q-Q Plot")
 ```
 
 
