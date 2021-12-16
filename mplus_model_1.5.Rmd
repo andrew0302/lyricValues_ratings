@@ -4,10 +4,6 @@ author: "Andrew M. Demetriou"
 date: "16/12/2021"
 ---
 ```{r, include=FALSE}
-#list.of.packages <- c("here", "tidyverse", "dplyr", "MplusAutomation", "texreg", "tidySEM", "corrplot", "faux")
-#new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-#if(length(new.packages)) install.packages(new.packages)
-
 library("here")            # file logistics
 library("stringr")         # detect strings in raw output
 library("tidyverse")       # data wrangling 
@@ -23,6 +19,8 @@ source("machine_file_reshape_1.6.R")
 source("data_file_re-shape_1.0.R")
 ```
 
+read in machine data:
+
 ```{r}
 # path with data
 data_file_path <- here("data/outputs")
@@ -32,8 +30,15 @@ data_files <- list.files(data_file_path)
 data_files <- data_files[1:44]
 
 # build machine data frame
-machine_output <- organize_machine_outputs(data_files)
+machines_dt <- organize_machine_outputs(data_files)
+machines_dt$item_ID <- as.integer(machines_dt$item_ID)
 
+rm(data_file_path, data_files)
+```
+
+read in participant data:
+
+```{r}
 data_file_path <- here("data")
 
 # file name as a string
@@ -42,7 +47,16 @@ file_name <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
 # read in qualtrics data file
 responses_dt <- fread(here(data_file_path, file_name)) %>%
   data_file_reshape(., file_name)
+
+responses_dt$item_ID <- as.integer(responses_dt$item_ID)
+
+rm(data_file_path, file_name)
 ```
+
+```{r}
+machines_as_fixed <- merge(x=responses_dt, y=machines_dt, by="item_ID", all.x=TRUE)
+```
+
 
 format data for mplus:
 ```{r}
@@ -56,24 +70,13 @@ format data for mplus:
 #the rdata function doesn't like my variable names; renaming:
 colnames(machines_as_fixed) <- c(
   #item and participant ID variables 
-  "item_ID", "subject_ID",
+  "item_ID", "participant_ID",
   
   #participant ratings
   "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", 
   
   #machine ratings, n_machines per value
   paste0("z", as.character(seq(length(colnames(machines_as_fixed))-12))))
-```
-
-```{r}
-#the rdata function doesn't like my variable names; renaming:
-colnames(machines_as_subjects) <- c(
-  #item and participant ID variables
-  #ishuman is a dummy var indicating 0 for machines, 1 for humans
-  "item_ID", "ishuman", "subject_ID",
-
-  #ratings
-  "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10")
 ```
 
 ```{r}

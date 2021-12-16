@@ -11,15 +11,6 @@ library('dplyr')           # data manipulation
 library('rlang')           # access variables in dplyr work flow
 ```
 
-Specify path, and create a list of file names:
-
-```{r}
-# path with data
-data_file_path <- here("data/outputs")
-
-# files
-data_files <- list.files(data_file_path)
-```
 
 Read in a raw file, and format data table:
 
@@ -49,8 +40,6 @@ machine_file_reshape <- function(file){
   machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
 }
 ```
-
-
 
 Average multiple runs into a single file:
 
@@ -126,6 +115,74 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
 }
 ```
 
+Specify path, and create a list of file names:
+
+```{r}
+# path with data
+data_file_path <- here("data/outputs")
+
+# files
+data_files <- list.files(data_file_path)
+```
+
+```{r}
+t <- function(data_files){
+  ## average scores from multiple machine runs
+  
+  # create a list of data tables and reshape
+  list_of_machine_data_tables <- lapply(data_files, machine_file_reshape)
+  
+  #create list of file names (excluding the last one)
+  names(list_of_machine_data_tables) <- data_files
+
+  # make a list of strings to represent each series of runs:
+  mxm_faruqi_uniform <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_uniform_weight_lyrics.txt")})
+  mxm_faruqi_idf     <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_idf_weight_lyrics.txt")})
+  mxm_split_uniform  <- lapply(seq(1,9,1), function(i){paste0("mxm_split_",   i, "_uniform_weight_lyrics.txt")})
+  mxm_split_idf      <- lapply(seq(1,9,1), function(i){paste0("mxm_split_",   i, "_idf_weight_lyrics.txt")})
+
+  # create a list of file lists
+  file_names <- list(mxm_faruqi_uniform, mxm_faruqi_idf, mxm_split_uniform, mxm_split_idf)
+
+  # name the elements in the list after the machine setup used to run
+  setup_names <- c("mxm_faruqi_uniform", "mxm_faruqi_idf", "mxm_split_uniform", "mxm_split_idf")
+
+  # create a list of configurations
+  names(file_names) <- setup_names
+  
+  #summarize machine runs
+  list_of_summarized_machine_runs <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
+  
+  ## format remaining data files
+  list_of_machine_data_tables <- list_of_machine_data_tables[1:4]
+
+  # extract column names
+  cols <- lapply(list_of_machine_data_tables, colnames)
+
+  # remove extra characters from column names
+  clean_cols <- lapply(cols, function(i){
+    gsub("_weight_lyrics.txt", "", i)  
+  })
+
+  # rename columns in list of data tables
+  for(i in 1:length(list_of_machine_data_tables)){
+    colnames(list_of_machine_data_tables[[i]]) <- clean_cols[[i]]
+  }
+
+  #merge two lists of data tables
+  complete_list_of_outputs <- c(list_of_machine_data_tables, list_of_summarized_machine_runs)
+
+  #clear junk
+  rm(complete_list_of_outputs, list_of_machine_data_tables, list_of_summarized_machine_runs, file_names, i, setup_names,   data_files, data_file_path, mxm_faruqi_idf, mxm_faruqi_uniform, mxm_split_idf, mxm_split_uniform)
+
+  #merge into a single data table:
+  big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), complete_list_of_outputs)
+    
+}
+```
+
+
+
 Make a list of formatted data tables, file names, and configurations:
 
 ```{r}
@@ -152,9 +209,7 @@ names(file_names) <- setup_names
 ```
 
 ```{r}
-#t <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
-
-#list_of_summarized_machine_runs[[1]]
+list_of_summarized_machine_runs <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
 ```
 
 Select the remaining data tables and reformat column names:
@@ -171,17 +226,17 @@ clean_cols <- lapply(cols, function(i){
 for(i in 1:length(list_of_machine_data_tables)){
   colnames(list_of_machine_data_tables[[i]]) <- clean_cols[[i]]
 }
-
-rm(clean_cols, cols)
 ```
 
 Merge all data tables into one big table:
 
 ```{r}
+#merge two lists of data tables
 complete_list_of_outputs <- c(list_of_machine_data_tables, list_of_summarized_machine_runs)
 
-#this one works:
+#merge into a single data table:
 big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), complete_list_of_outputs)
 
-rm(complete_list_of_outputs, list_of_machine_data_tables, list_of_summarized_machine_runs)
+#clear junk
+rm(complete_list_of_outputs, list_of_machine_data_tables, list_of_summarized_machine_runs, file_names, i, setup_names, data_files, data_file_path, mxm_faruqi_idf, mxm_faruqi_uniform, mxm_split_idf, mxm_split_uniform)
 ```
