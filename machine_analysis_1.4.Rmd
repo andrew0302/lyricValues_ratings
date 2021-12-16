@@ -61,16 +61,6 @@ list_of_machine_data_tables <- lapply(data_files[1:44], machine_file_reshape)
 names(list_of_machine_data_tables) <- data_files[1:44]
 ```
 
-Merge all data tables into one big table:
-
-```{r}
-#merge all datatables (wide format)
-#big_ass_data_table <- setDT(unlist(list_of_machine_data_tables, recursive = FALSE), check.names = TRUE)
-
-#this one works:
-#big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), list_of_machine_data_tables)
-```
-
 Make a list of file names and a list of configurations:
 
 ```{r}
@@ -83,11 +73,11 @@ mxm_split_idf      <- lapply(seq(1,9,1), function(i){paste0("mxm_split_",   i, "
 # create a list of file lists
 file_names <- list(mxm_faruqi_uniform, mxm_faruqi_idf, mxm_split_uniform, mxm_split_idf)
 
-# create a list of configurations
-names(file_names) <- setup_names
-
 # name the elements in the list after the machine setup used to run
 setup_names <- c("mxm_faruqi_uniform", "mxm_faruqi_idf", "mxm_split_uniform", "mxm_split_idf")
+
+# create a list of configurations
+names(file_names) <- setup_names
 
 #remove junk
 rm(mxm_faruqi_idf, mxm_faruqi_uniform, mxm_split_idf, mxm_split_uniform)
@@ -173,11 +163,20 @@ list_of_machine_data_tables <- list_of_machine_data_tables[1:4]
 
 cols <- lapply(list_of_machine_data_tables, colnames)
 
-clean_cols <- lapply(t, function(i){
+clean_cols <- lapply(cols, function(i){
   gsub("_weight_lyrics.txt", "", i)  
 })
 
 for(i in 1:length(list_of_machine_data_tables)){
   colnames(list_of_machine_data_tables[[i]]) <- clean_cols[[i]]
 }
+```
+
+Merge all data tables into one big table:
+
+```{r}
+complete_list_of_outputs <- c(list_of_machine_data_tables, list_of_summarized_machine_runs)
+
+#this one works:
+big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), complete_list_of_outputs)
 ```
