@@ -9,7 +9,6 @@ library('here')            # file logistics
 library('data.table')      # data manipulation
 library('dplyr')           # data manipulation
 library('rlang')           # access variables in dplyr work flow
-library("MplusAutomation") # Mplus integration
 ```
 
 Specify path, and create a list of file names:
@@ -64,7 +63,7 @@ names(list_of_machine_data_tables) <- data_files[1:44]
 Make a list of file names and a list of configurations:
 
 ```{r}
-# make a list of strings to represent a series of runs individually because I'm too fucking stupid to figure out how to put it in a function:
+# make a list of strings to represent each series of runs:
 mxm_faruqi_uniform <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_uniform_weight_lyrics.txt")})
 mxm_faruqi_idf     <- lapply(seq(1,9,1), function(i){paste0("mxm_faruqui_", i, "_idf_weight_lyrics.txt")})
 mxm_split_uniform  <- lapply(seq(1,9,1), function(i){paste0("mxm_split_",   i, "_uniform_weight_lyrics.txt")})
@@ -148,7 +147,7 @@ for(i in 1:length(file_names)){
 names(list_of_summarized_machine_runs) <- names(file_names)
 
 # remove junk
-rm(file_name, file_names, machine_runs)
+rm(file_name, file_names, machine_runs, i, setup_name, setup_names)
 ```
 
 
@@ -170,6 +169,8 @@ clean_cols <- lapply(cols, function(i){
 for(i in 1:length(list_of_machine_data_tables)){
   colnames(list_of_machine_data_tables[[i]]) <- clean_cols[[i]]
 }
+
+rm(clean_cols, cols)
 ```
 
 Merge all data tables into one big table:
@@ -179,4 +180,6 @@ complete_list_of_outputs <- c(list_of_machine_data_tables, list_of_summarized_ma
 
 #this one works:
 big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), complete_list_of_outputs)
+
+rm(complete_list_of_outputs, list_of_machine_data_tables, list_of_summarized_machine_runs)
 ```
