@@ -35,7 +35,7 @@ data_files <- data_files[1:44]
 machines_dt <- organize_machine_outputs(data_files)
 machines_dt$item_ID <- as.integer(machines_dt$item_ID)
 
-rm(data_file_path, data_files)
+rm(data_file_path, data_files, machine_file_reshape, organize_machine_outputs, summarize_machine_run, gather_summarized_machine_runs)
 ```
 
 read in participant data:
@@ -52,8 +52,14 @@ responses_dt <- fread(here(data_file_path, file_name)) %>%
 
 responses_dt$item_ID <- as.integer(responses_dt$item_ID)
 
-rm(data_file_path, file_name)
+rm(data_file_path, file_name, data_file_reshape)
 ```
+put machines dataframe columns in order
+
+```{r}
+machines_dt <- machines_dt %>% select(item_ID, sort(colnames(.[,2:81])))
+```
+
 
 ```{r}
 machines_as_fixed <- merge(x=responses_dt, y=machines_dt, by="item_ID", all.x=TRUE)
@@ -103,7 +109,7 @@ model <- mplusObject(
   ESTIMATOR = BAYES;
   FBITERATIONS = 5000;
   ALGORITHM = GIBBS(RW);
-  PROCESSORS = 10;",
+  PROCESSORS = 11;",
   
   MODEL = "
   
