@@ -1,0 +1,74 @@
+Mplus VERSION 8.6
+MUTHEN & MUTHEN
+12/19/2021   6:25 PM
+
+INPUT INSTRUCTIONS
+
+  TITLE:
+  model;
+  DATA:
+  FILE = "sim_2ea80c2d0b6badd82f512e7bfc33109a.dat";
+
+  VARIABLE:
+  NAMES = participant_ID item_ID y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 ishuman;
+   MISSING=.;
+
+    USEVARIABLES = participant_ID ishuman item_ID y1-y10;
+    CLUSTER = participant_ID item_ID;
+    BETWEEN = (item_ID) ishuman;
+  ANALYSIS:
+
+    TYPE = CROSSCLASSIFIED RANDOM;
+    ESTIMATOR = BAYES;
+    FBITERATIONS = 5000;
+    ALGORITHM = GIBBS(RW);
+    PROCESSORS = 10;
+  MODEL:
+
+
+    %within%
+    y1-y10;
+
+    %between item_ID%
+    y1-y10; [y1-y10];
+
+    y1 WITH y2-y10;
+    y2 WITH y3-y10;
+    y3 WITH y4-y10;
+    y4 WITH y5-y10;
+    y5 WITH y6-y10;
+    y6 WITH y7-y10;
+    y7 WITH y8-y10;
+    y8 WITH y9-y10;
+    y9 WITH y10;
+
+    y1-y10 ON ishuman;
+
+    %between participant_ID%
+    y1-y10; [y1-y10@0];
+  OUTPUT:
+  Tech1 Tech8 standardized cinterval(hpd)
+
+*** ERROR
+  One or more between-level variables have variation within a cluster for
+  one or more ITEM_ID clusters.  Check your data and format statement.
+
+     Between    Cluster IDS with variation in this variable
+     Variable
+
+      ISHUMAN     204336669 80257632 205113268 2241308 134245347 16074172 17997657 99962781 99526020
+                  151085454 97622225 4116102 99567690 34952275 55713838 61210999 9223300 149782763
+                  152156851 57005765
+
+
+
+MUTHEN & MUTHEN
+3463 Stoner Ave.
+Los Angeles, CA  90066
+
+Tel: (310) 391-9971
+Fax: (310) 391-8971
+Web: www.StatModel.com
+Support: Support@StatModel.com
+
+Copyright (c) 1998-2021 Muthen & Muthen

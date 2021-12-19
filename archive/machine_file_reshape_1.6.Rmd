@@ -1,5 +1,5 @@
 ---
-title: "machine_file_reshape"
+title: "machines_as_fixed_effects"
 author: "Andrew M. Demetriou"
 date: "12/9/2021"
 ---

@@ -1,5 +1,5 @@
 ---
-title: "machines_as_subjects"
+title: "machines_as_participants"
 author: "Andrew M. Demetriou"
 date: "12/9/2021"
 ---
@@ -14,7 +14,7 @@ library('rlang')           # access variables in dplyr work flow
 Read in a raw file, and format data table:
 
 ```{r}
-machine_file_reshape <- function(file){
+machine_file_reshape_as_participants <- function(file){
   
   #read in data file
   machine_dt <- fread(here(data_file_path, file))
@@ -38,7 +38,7 @@ machine_file_reshape <- function(file){
 Average multiple runs into a single file:
 
 ```{r}
-summarize_machine_run  <- function(list_of_machine_data_tables, file_name, setup_name){
+summarize_machine_run_as_participants  <- function(list_of_machine_data_tables, file_name, setup_name){
 
   #select data tables by file name
   data_table <- list_of_machine_data_tables[names(list_of_machine_data_tables) %in% file_name]%>%
@@ -70,7 +70,7 @@ summarize_machine_run  <- function(list_of_machine_data_tables, file_name, setup
 Gather multiple runs of multiple machine setups into a list of summaries
 
 ```{r}
-gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_names, setup_names){
+gather_summarized_machine_runs_as_participants <- function(list_of_machine_data_tables, file_names, setup_names){
   #make empty list to populate
   list_of_summarized_machine_runs <- list()
 
@@ -79,7 +79,7 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
     file_name <- file_names[[i]]
     names(file_name) <- names(file_names)[i]
     #pass above variables to function:
-    machine_runs <- summarize_machine_run(list_of_machine_data_tables, file_name, setup_name)
+    machine_runs <- summarize_machine_run_as_participants(list_of_machine_data_tables, file_name, setup_name)
     machine_runs$machine_ID <- setup_name
     #append to list
     list_of_summarized_machine_runs[[i]] <- machine_runs
@@ -99,11 +99,11 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
 
 
 ```{r}
-organize_machine_outputs_as_subjects <- function(data_files){
+organize_machine_outputs_as_participants <- function(data_files){
   ## average scores from multiple machine runs
   
   # create a list of data tables and reshape
-  list_of_machine_data_tables <- lapply(data_files, machine_file_reshape)
+  list_of_machine_data_tables <- lapply(data_files, machine_file_reshape_as_participants)
   
   #create list of file names (excluding the last one)
   names(list_of_machine_data_tables) <- data_files
@@ -124,23 +124,13 @@ organize_machine_outputs_as_subjects <- function(data_files){
   names(file_names) <- setup_names
   
   #summarize machine runs
-  list_of_summarized_machine_runs <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
+  list_of_summarized_machine_runs <- gather_summarized_machine_runs_as_participants(list_of_machine_data_tables, file_names, setup_names)
   
   ## format remaining data files
   list_of_machine_data_tables <- list_of_machine_data_tables[1:4]
 
   # extract column names
   cols <- lapply(list_of_machine_data_tables, colnames)
-
-  # remove extra characters from column names
-#  clean_cols <- lapply(cols, function(i){
-#    gsub("_weight_lyrics.txt", "", i)  
-#  })
-
-  # rename columns in list of data tables
-#  for(i in 1:length(list_of_machine_data_tables)){
-#    colnames(list_of_machine_data_tables[[i]]) <- clean_cols[[i]]
-#  }
 
   #merge two lists of data tables
   complete_list_of_outputs <- c(list_of_machine_data_tables, list_of_summarized_machine_runs)
@@ -160,11 +150,11 @@ Specify path, and create a list of file names:
 
 ```{r}
 # path with data
-#data_file_path <- here("data/outputs")
+data_file_path <- here("data/outputs")
 
 # files
-#data_files <- list.files(data_file_path)
-#data_files <- data_files[1:44]
+data_files <- list.files(data_file_path)
+data_files <- data_files[1:44]
 
-#t <- organize_machine_outputs_as_subjects(data_files)
+t <- organize_machine_outputs_as_participants(data_files)
 ```

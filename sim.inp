@@ -1,0 +1,44 @@
+TITLE:
+model;
+DATA:
+FILE = "sim_2ea80c2d0b6badd82f512e7bfc33109a.dat";
+ 
+VARIABLE:
+NAMES = participant_ID item_ID y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 ishuman; 
+ MISSING=.;
+ 
+  USEVARIABLES = participant_ID ishuman item_ID y1-y10;
+  CLUSTER = participant_ID item_ID;
+  BETWEEN = (item_ID) ishuman;
+ANALYSIS:
+
+  TYPE = CROSSCLASSIFIED RANDOM;
+  ESTIMATOR = BAYES;
+  FBITERATIONS = 5000;
+  ALGORITHM = GIBBS(RW);
+  PROCESSORS = 10;
+MODEL:
+
+  
+  %within% 
+  y1-y10;
+  
+  %between item_ID% 
+  y1-y10; [y1-y10];  
+  
+  y1 WITH y2-y10;
+  y2 WITH y3-y10;
+  y3 WITH y4-y10;
+  y4 WITH y5-y10;
+  y5 WITH y6-y10;
+  y6 WITH y7-y10;
+  y7 WITH y8-y10;
+  y8 WITH y9-y10;
+  y9 WITH y10;
+  
+  y1-y10 ON ishuman;
+  
+  %between participant_ID% 
+  y1-y10; [y1-y10@0];
+OUTPUT:
+Tech1 Tech8 standardized cinterval(hpd)
