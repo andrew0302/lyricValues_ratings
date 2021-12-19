@@ -80,6 +80,7 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
     names(file_name) <- names(file_names)[i]
     #pass above variables to function:
     machine_runs <- summarize_machine_run(list_of_machine_data_tables, file_name, setup_name)
+    machine_runs$machine_ID <- setup_name
     #append to list
     list_of_summarized_machine_runs[[i]] <- machine_runs
 }
@@ -92,13 +93,13 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
 
 
 ```{r}
-t <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
+#t <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
 ```
 
 
 
 ```{r}
-organize_machine_outputs <- function(data_files){
+organize_machine_outputs_as_subjects <- function(data_files){
   ## average scores from multiple machine runs
   
   # create a list of data tables and reshape
@@ -146,6 +147,7 @@ organize_machine_outputs <- function(data_files){
 
   #merge into a single data table:
   big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), complete_list_of_outputs)
+  big_ass_data_table$machine_ID <- gsub("_weight_lyrics.txt", "", big_ass_data_table$machine_ID)
   
   #clear junk
   rm(complete_list_of_outputs, list_of_machine_data_tables, list_of_summarized_machine_runs, file_names, i, setup_names,   mxm_faruqi_idf, mxm_faruqi_uniform, mxm_split_idf, mxm_split_uniform)
@@ -158,11 +160,11 @@ Specify path, and create a list of file names:
 
 ```{r}
 # path with data
-data_file_path <- here("data/outputs")
+#data_file_path <- here("data/outputs")
 
 # files
-data_files <- list.files(data_file_path)
-data_files <- data_files[1:44]
+#data_files <- list.files(data_file_path)
+#data_files <- data_files[1:44]
 
-#t <- organize_machine_outputs(data_files)
+#t <- organize_machine_outputs_as_subjects(data_files)
 ```
