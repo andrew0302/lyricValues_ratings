@@ -100,8 +100,8 @@ model <- mplusObject(
   TITLE = "model;",
   MISSING = ".;",
   VARIABLE = "
-  USEVARIABLES = subject_ID item_ID y1-y10 z1-z80;
-  CLUSTER = subject_ID item_ID;
+  USEVARIABLES = item_ID participant_ID y1-y10 z1-z80;
+  CLUSTER = item_ID participant_ID;
   BETWEEN = (item_ID) z1-z80;",
   
   ANALYSIS = "
@@ -141,17 +141,28 @@ model <- mplusObject(
   
   m1-m10@1;
  
- m1 WITH m2-m10;
- m2 WITH m3-m10;
- m3 WITH m4-m10;
- m4 WITH m5-m10;
- m5 WITH m6-m10;
- m6 WITH m7-m10;
- m7 WITH m8-m10;
- m8 WITH m9-m10;
- m9 WITH m10;
+  m1 WITH m2-m10;
+  m2 WITH m3-m10;
+  m3 WITH m4-m10;
+  m4 WITH m5-m10;
+  m5 WITH m6-m10;
+  m6 WITH m7-m10;
+  m7 WITH m8-m10;
+  m8 WITH m9-m10;
+  m9 WITH m10;
+  
+  m1  WITH y1;
+  m2  WITH y2;
+  m3  WITH y3;
+  m4  WITH y4;
+  m5  WITH y5;
+  m6  WITH y6;
+  m7  WITH y7;
+  m8  WITH y8;
+  m9  WITH y9;
+  m10 WITH y10;
 
-  %between subject_ID% 
+  %between participant_ID% 
   y1-y10; [y1-y10@0];", 
   
   OUTPUT = "Tech1 Tech8 standardized cinterval(hpd)",
@@ -166,10 +177,10 @@ model <- mplusObject(
 ```
 
 ```{r}
-start.time <- Sys.time()
+#start.time <- Sys.time()
 fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
-end.time <- Sys.time()
-time.taken_1 <- round(end.time - start.time, 2)
+#end.time <- Sys.time()
+#time.taken_1 <- round(end.time - start.time, 2)
 fit$results$errors
 fit$results$warnings
 ```
@@ -177,16 +188,11 @@ fit$results$warnings
 ```{r}
 parameters <- data.frame(fit$results$parameters$stdyx.standardized)
 DIC <- fit$results$summaries$DIC
-#results_correlations <- parameters[grep('Z1.WITH', parameters$paramHeader), ]
-#results_variances <- parameters[grep('Variances', parameters$paramHeader), ]
+results_correlations <- parameters[grep('.WITH', parameters$paramHeader), ]
+results_variances <- parameters[grep('Variances', parameters$paramHeader), ]
 #write.csv(parameters, "parameters.csv") 
 ```
 
-
-```{r}
-trash <- c(list.files(pattern = ".dat|.gh5"), list.files(pattern = ".inp|.out"))
-file.remove(trash)
-```
 
 # estimate the difference between humans and machines per value
 
