@@ -66,12 +66,11 @@ responses_dt <- participants_dt
 responses_dt$ishuman <- 1
 machines_as_participants_dt <- rbind(machines_as_participants_dt, responses_dt)
 
-#betweem_list_check <- machines_as_participants_dt %>% select(item_ID, participant_ID, ishuman, everything()) %>% group_by(participant_ID) %>% summarize(t = mean(ishuman))
+#between_list_check <- machines_as_participants_dt %>% select(item_ID, participant_ID, ishuman, everything()) %>% group_by(participant_ID) %>% summarize(t = mean(ishuman))
 
 
 #rm(data_file_path, data_files, gather_summarized_machine_runs_as_participants, organize_machine_outputs_as_participants, machine_file_reshape_as_participants, summarize_machine_run_as_participants)
 ```
-
 
 ```{r}
 machines_as_fixed_dt <- machines_as_fixed_dt %>% select(item_ID, sort(colnames(.[,2:81])))
