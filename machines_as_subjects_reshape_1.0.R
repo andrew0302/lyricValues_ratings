@@ -1,21 +1,11 @@
----
-title: "machines_as_fixed_effects"
-author: "Andrew M. Demetriou"
-date: "12/9/2021"
----
 
-```{r}
 library('here')            # file logistics
 library('data.table')      # data manipulation
 library('dplyr')           # data manipulation
 library('rlang')           # access variables in dplyr work flow
-```
 
-
-Read in a raw file, and format data table:
-
-```{r}
-machine_file_reshape <- function(file){
+#Read in a raw file, and format data table:
+machine_file_reshape_as_participants <- function(file){
   
   #read in data file
   machine_dt <- fread(here(data_file_path, file))
@@ -33,39 +23,20 @@ machine_file_reshape <- function(file){
   #set column order to match participant order
   machine_dt <- machine_dt[, c("machine_ID", "item_ID", "ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")]
 
-  #names of values  
-  value_names <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER",  "SECURITY", "SELF", "STIMULATION",  "TRADITION", "UNIVERSALISM")
-
-  #pivot to wide format
-  machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
 }
-```
 
-Average multiple runs into a single file:
 
-```{r}
-summarize_machine_run  <- function(list_of_machine_data_tables, file_name, setup_name){
+#Average multiple runs into a single file:
+summarize_machine_run_as_participants  <- function(list_of_machine_data_tables, file_name, setup_name){
 
   #select data tables by file name
   data_table <- list_of_machine_data_tables[names(list_of_machine_data_tables) %in% file_name]%>%
     # bind data tables into a single data table
-    rbindlist(., use.names=FALSE, idcol=TRUE)
+    rbindlist(., use.names=FALSE, idcol=TRUE) %>%
+    select(-.id)
 
   #list of schwartz values
-  values <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM")
-  
-  #make list of column names
-  cols <- lapply(values, function(i){
-  #paste0(i, "_", names(file_name))
-  paste0(i, "_", setup_name)
-  })
-  
-  #clean up data_table column names
-  colnames(data_table) <- c(
-    "trial", "item_ID", 
-    cols[[1]], cols[[2]], cols[[3]], cols[[4]], 
-    cols[[5]], cols[[6]], cols[[7]], cols[[8]],
-    cols[[9]], cols[[10]])
+  cols <- c("ACHIEVEMENT", "BENEVOLENCE", "CONFORMITY", "HEDONISM", "POWER", "SECURITY", "SELF", "STIMULATION", "TRADITION", "UNIVERSALISM")
   
   #summarize runs
   data_table <- data_table %>%
@@ -83,19 +54,11 @@ summarize_machine_run  <- function(list_of_machine_data_tables, file_name, setup
       !! cols[[10]] := mean(!! rlang::sym(cols[[10]])),
     )
 }
-```
 
-```{r}
-#file_name <- file_names[[1]]
-#t <- summarize_machine_run(list_of_machine_data_tables, file_names[[1]], setup_names[1])
-#list_of_summarized_machine_runs <- list()
-#list_of_summarized_machine_runs[[1]] <- summarize_machine_run(list_of_machine_data_tables, file_name = file_names[[1]])
-```
 
-Gather multiple runs of multiple machine setups into a list of summaries
+#Gather multiple runs of multiple machine setups into a list of summaries
 
-```{r}
-gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_names, setup_names){
+gather_summarized_machine_runs_as_participants <- function(list_of_machine_data_tables, file_names, setup_names){
   #make empty list to populate
   list_of_summarized_machine_runs <- list()
 
@@ -104,7 +67,8 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
     file_name <- file_names[[i]]
     names(file_name) <- names(file_names)[i]
     #pass above variables to function:
-    machine_runs <- summarize_machine_run(list_of_machine_data_tables, file_name, setup_name)
+    machine_runs <- summarize_machine_run_as_participants(list_of_machine_data_tables, file_name, setup_name)
+    machine_runs$machine_ID <- setup_name
     #append to list
     list_of_summarized_machine_runs[[i]] <- machine_runs
 }
@@ -113,14 +77,13 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
   
   return(list_of_summarized_machine_runs)
 }
-```
 
-```{r}
-organize_machine_outputs <- function(data_files){
+
+organize_machine_outputs_as_participants <- function(data_files){
   ## average scores from multiple machine runs
   
   # create a list of data tables and reshape
-  list_of_machine_data_tables <- lapply(data_files, machine_file_reshape)
+  list_of_machine_data_tables <- lapply(data_files, machine_file_reshape_as_participants)
   
   #create list of file names (excluding the last one)
   names(list_of_machine_data_tables) <- data_files
@@ -141,7 +104,7 @@ organize_machine_outputs <- function(data_files){
   names(file_names) <- setup_names
   
   #summarize machine runs
-  list_of_summarized_machine_runs <- gather_summarized_machine_runs(list_of_machine_data_tables, file_names, setup_names)
+  list_of_summarized_machine_runs <- gather_summarized_machine_runs_as_participants(list_of_machine_data_tables, file_names, setup_names)
   
   ## format remaining data files
   list_of_machine_data_tables <- list_of_machine_data_tables[1:4]
@@ -149,38 +112,15 @@ organize_machine_outputs <- function(data_files){
   # extract column names
   cols <- lapply(list_of_machine_data_tables, colnames)
 
-  # remove extra characters from column names
-  clean_cols <- lapply(cols, function(i){
-    gsub("_weight_lyrics.txt", "", i)  
-  })
-
-  # rename columns in list of data tables
-  for(i in 1:length(list_of_machine_data_tables)){
-    colnames(list_of_machine_data_tables[[i]]) <- clean_cols[[i]]
-  }
-
   #merge two lists of data tables
   complete_list_of_outputs <- c(list_of_machine_data_tables, list_of_summarized_machine_runs)
 
   #merge into a single data table:
   big_ass_data_table = Reduce(function(...) merge(..., all = TRUE), complete_list_of_outputs)
+  big_ass_data_table$machine_ID <- gsub("_weight_lyrics.txt", "", big_ass_data_table$machine_ID)
   
   #clear junk
   rm(complete_list_of_outputs, list_of_machine_data_tables, list_of_summarized_machine_runs, file_names, i, setup_names,   mxm_faruqi_idf, mxm_faruqi_uniform, mxm_split_idf, mxm_split_uniform)
   
   return(big_ass_data_table)
 }
-```
-
-Specify path, and create a list of file names:
-
-```{r}
-# path with data
-#data_file_path <- here("data/outputs")
-
-# files
-#data_files <- list.files(data_file_path)
-#data_files <- data_files[1:44]
-
-#t <- organize_machine_outputs(data_files)
-```

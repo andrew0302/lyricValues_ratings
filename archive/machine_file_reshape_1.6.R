@@ -1,20 +1,10 @@
----
-title: "machines_as_fixed_effects"
-author: "Andrew M. Demetriou"
-date: "12/9/2021"
----
 
-```{r}
 library('here')            # file logistics
 library('data.table')      # data manipulation
 library('dplyr')           # data manipulation
 library('rlang')           # access variables in dplyr work flow
-```
 
 
-Read in a raw file, and format data table:
-
-```{r}
 machine_file_reshape <- function(file){
   
   #read in data file
@@ -39,11 +29,8 @@ machine_file_reshape <- function(file){
   #pivot to wide format
   machine_dt <- dcast(machine_dt, item_ID ~ machine_ID, value.var = value_names) 
 }
-```
 
-Average multiple runs into a single file:
 
-```{r}
 summarize_machine_run  <- function(list_of_machine_data_tables, file_name, setup_name){
 
   #select data tables by file name
@@ -83,18 +70,8 @@ summarize_machine_run  <- function(list_of_machine_data_tables, file_name, setup
       !! cols[[10]] := mean(!! rlang::sym(cols[[10]])),
     )
 }
-```
 
-```{r}
-#file_name <- file_names[[1]]
-#t <- summarize_machine_run(list_of_machine_data_tables, file_names[[1]], setup_names[1])
-#list_of_summarized_machine_runs <- list()
-#list_of_summarized_machine_runs[[1]] <- summarize_machine_run(list_of_machine_data_tables, file_name = file_names[[1]])
-```
 
-Gather multiple runs of multiple machine setups into a list of summaries
-
-```{r}
 gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_names, setup_names){
   #make empty list to populate
   list_of_summarized_machine_runs <- list()
@@ -113,9 +90,8 @@ gather_summarized_machine_runs <- function(list_of_machine_data_tables, file_nam
   
   return(list_of_summarized_machine_runs)
 }
-```
 
-```{r}
+
 organize_machine_outputs <- function(data_files){
   ## average scores from multiple machine runs
   
@@ -170,17 +146,3 @@ organize_machine_outputs <- function(data_files){
   
   return(big_ass_data_table)
 }
-```
-
-Specify path, and create a list of file names:
-
-```{r}
-# path with data
-#data_file_path <- here("data/outputs")
-
-# files
-#data_files <- list.files(data_file_path)
-#data_files <- data_files[1:44]
-
-#t <- organize_machine_outputs(data_files)
-```

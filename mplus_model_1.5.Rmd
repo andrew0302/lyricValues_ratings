@@ -15,7 +15,8 @@ library("MVN")             # testing multivariate normality
 library("RVAideMemoire")   # multivariate q-q plot
 
 #organize machine output
-source("machine_file_reshape_1.6.R")
+source("machines_as_fixed_reshape_1.0.R")
+source("machines_as_subjects_reshape_1.0.R")
 
 # organize qualtrics output
 source("data_file_re-shape_1.0.R")
@@ -31,11 +32,11 @@ data_file_path <- here("data/outputs")
 data_files <- list.files(data_file_path)
 data_files <- data_files[1:44]
 
-# build machine data frame
-machines_dt <- organize_machine_outputs(data_files)
-machines_dt$item_ID <- as.integer(machines_dt$item_ID)
+# build machine data frames
+machines_as_fixed_dt <- organize_machine_outputs(data_files)
+machines_as_fixed_dt$item_ID <- as.integer(machines_as_fixed_dt$item_ID)
 
-rm(data_file_path, data_files)
+#rm(machine_file_reshape, organize_machine_outputs, summarize_machine_run, gather_summarized_machine_runs)
 ```
 
 read in participant data:
@@ -47,21 +48,42 @@ data_file_path <- here("data")
 file_name <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
 
 # read in qualtrics data file
-responses_dt <- fread(here(data_file_path, file_name)) %>%
+participants_dt <- fread(here(data_file_path, file_name)) %>%
   data_file_reshape(., file_name)
 
-responses_dt$item_ID <- as.integer(responses_dt$item_ID)
+participants_dt$item_ID <- as.integer(participants_dt$item_ID)
 
-rm(data_file_path, file_name)
+#rm(file_name, data_file_reshape)
 ```
 
 ```{r}
-machines_as_fixed <- merge(x=responses_dt, y=machines_dt, by="item_ID", all.x=TRUE)
+data_file_path <- here("data/outputs")
+
+machines_as_participants_dt <- organize_machine_outputs_as_participants(data_files)
+machines_as_participants_dt$ishuman <- 0
+setnames(machines_as_participants_dt, "machine_ID", "participant_ID")
+responses_dt <- participants_dt
+responses_dt$ishuman <- 1
+machines_as_participants_dt <- rbind(machines_as_participants_dt, responses_dt)
+
+#between_list_check <- machines_as_participants_dt %>% select(item_ID, participant_ID, ishuman, everything()) %>% group_by(participant_ID) %>% summarize(t = mean(ishuman))
+
+
+#rm(data_file_path, data_files, gather_summarized_machine_runs_as_participants, organize_machine_outputs_as_participants, machine_file_reshape_as_participants, summarize_machine_run_as_participants)
 ```
 
 ```{r}
-mvn(responses_dt[,3:12], multivariatePlot = "q-q")
-RVAideMemoire::mqqnorm(responses_dt[,3:12], main = "Multi-normal Q-Q Plot")
+machines_as_fixed_dt <- machines_as_fixed_dt %>% select(item_ID, sort(colnames(.[,2:81])))
+```
+
+
+```{r}
+machines_as_fixed_dt <- merge(x=participants_dt, y=machines_as_fixed_dt, by="item_ID", all.x=TRUE)
+```
+
+```{r}
+mvn(participants_dt[,3:12], multivariatePlot = "q-q")
+RVAideMemoire::mqqnorm(participants_dt[,3:12], main = "Multi-normal Q-Q Plot")
 ```
 
 
@@ -75,7 +97,7 @@ format data for mplus:
 
 ```{r}
 #the rdata function doesn't like my variable names; renaming:
-colnames(machines_as_fixed) <- c(
+colnames(machines_as_fixed_dt) <- c(
   #item and participant ID variables 
   "item_ID", "participant_ID",
   
@@ -83,7 +105,7 @@ colnames(machines_as_fixed) <- c(
   "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", 
   
   #machine ratings, n_machines per value
-  paste0("z", as.character(seq(length(colnames(machines_as_fixed))-12))))
+  paste0("z", as.character(seq(length(colnames(machines_as_fixed_dt))-12))))
 ```
 
 ```{r}
@@ -94,8 +116,8 @@ model <- mplusObject(
   TITLE = "model;",
   MISSING = ".;",
   VARIABLE = "
-  USEVARIABLES = subject_ID item_ID y1-y10 z1-z80;
-  CLUSTER = subject_ID item_ID;
+  USEVARIABLES = item_ID participant_ID y1-y10 z1-z80;
+  CLUSTER = item_ID participant_ID;
   BETWEEN = (item_ID) z1-z80;",
   
   ANALYSIS = "
@@ -103,7 +125,7 @@ model <- mplusObject(
   ESTIMATOR = BAYES;
   FBITERATIONS = 5000;
   ALGORITHM = GIBBS(RW);
-  PROCESSORS = 10;",
+  PROCESSORS = 11;",
   
   MODEL = "
   
@@ -135,22 +157,33 @@ model <- mplusObject(
   
   m1-m10@1;
  
- m1 WITH m2-m10;
- m2 WITH m3-m10;
- m3 WITH m4-m10;
- m4 WITH m5-m10;
- m5 WITH m6-m10;
- m6 WITH m7-m10;
- m7 WITH m8-m10;
- m8 WITH m9-m10;
- m9 WITH m10;
+  m1 WITH m2-m10;
+  m2 WITH m3-m10;
+  m3 WITH m4-m10;
+  m4 WITH m5-m10;
+  m5 WITH m6-m10;
+  m6 WITH m7-m10;
+  m7 WITH m8-m10;
+  m8 WITH m9-m10;
+  m9 WITH m10;
+  
+  m1  WITH y1;
+  m2  WITH y2;
+  m3  WITH y3;
+  m4  WITH y4;
+  m5  WITH y5;
+  m6  WITH y6;
+  m7  WITH y7;
+  m8  WITH y8;
+  m9  WITH y9;
+  m10 WITH y10;
 
-  %between subject_ID% 
+  %between participant_ID% 
   y1-y10; [y1-y10@0];", 
   
   OUTPUT = "Tech1 Tech8 standardized cinterval(hpd)",
   
-  rdata = as.data.frame(machines_as_fixed)
+  rdata = as.data.frame(machines_as_fixed_dt)
 )
 
 #fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
@@ -160,10 +193,10 @@ model <- mplusObject(
 ```
 
 ```{r}
-start.time <- Sys.time()
+#start.time <- Sys.time()
 fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
-end.time <- Sys.time()
-time.taken_1 <- round(end.time - start.time, 2)
+#end.time <- Sys.time()
+#time.taken_1 <- round(end.time - start.time, 2)
 fit$results$errors
 fit$results$warnings
 ```
@@ -171,15 +204,23 @@ fit$results$warnings
 ```{r}
 parameters <- data.frame(fit$results$parameters$stdyx.standardized)
 DIC <- fit$results$summaries$DIC
-#results_correlations <- parameters[grep('Z1.WITH', parameters$paramHeader), ]
-#results_variances <- parameters[grep('Variances', parameters$paramHeader), ]
+results_correlations <- parameters[grep('.WITH', parameters$paramHeader), ]
+results_variances <- parameters[grep('Variances', parameters$paramHeader), ]
 #write.csv(parameters, "parameters.csv") 
 ```
 
-
 ```{r}
-trash <- c(list.files(pattern = ".dat|.gh5"), list.files(pattern = ".inp|.out"))
-file.remove(trash)
+#the rdata function doesn't like my variable names; renaming:
+colnames(machines_as_participants_dt) <- c(
+  #item and participant ID variables 
+  "participant_ID",  "item_ID", 
+  
+  #participant ratings
+  "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", 
+  
+  "ishuman")
+
+machines_as_participants_dt <- as.data.frame(machines_as_participants_dt)
 ```
 
 # estimate the difference between humans and machines per value
@@ -189,8 +230,8 @@ model <- mplusObject(
   TITLE = "model;",
   MISSING = ".;",
   VARIABLE = "
-  USEVARIABLES = subject_ID ishuman item_ID y1-y10;
-  CLUSTER = subject_ID item_ID;
+  USEVARIABLES = participant_ID ishuman item_ID y1-y10;
+  CLUSTER = participant_ID item_ID;
   BETWEEN = (item_ID) ishuman;",
   
   ANALYSIS = "
@@ -198,7 +239,7 @@ model <- mplusObject(
   ESTIMATOR = BAYES;
   FBITERATIONS = 5000;
   ALGORITHM = GIBBS(RW);
-  PROCESSORS = 10;",
+  PROCESSORS = 11;",
   
   MODEL = "
   
@@ -220,20 +261,20 @@ model <- mplusObject(
   
   y1-y10 ON ishuman;
   
-  %between subject_ID% 
+  %between participant_ID% 
   y1-y10; [y1-y10@0];", 
   
   OUTPUT = "Tech1 Tech8 standardized cinterval(hpd)",
   
-  rdata = machines_as_subjects
+  rdata = machines_as_participants_dt
 )
 ```
 
 ```{r}
-start.time <- Sys.time()
+#start.time <- Sys.time()
 fit <- mplusModeler(model, modelout = "sim.inp", run=1L)
-end.time <- Sys.time()
-time.taken_1 <- round(end.time - start.time, 2)
+#end.time <- Sys.time()
+#time.taken_1 <- round(end.time - start.time, 2)
 fit$results$errors
 fit$results$warnings
 
