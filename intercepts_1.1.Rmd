@@ -1,0 +1,93 @@
+---
+title: "intercepts"
+author: "Andrew M. Demetriou"
+date: "2/1/2022"
+---
+
+```{r, include=FALSE}
+library("here")            # file logistics
+library("tidyverse")       # data wrangling 
+library("MplusAutomation") # Mplus integration
+library("MVN")             # testing multivariate normality
+library("RVAideMemoire")   # multivariate q-q plot
+library("lme4")
+library("tibble")
+library("ggplot2")
+
+
+# organize qualtrics output
+source("data_file_re-shape_1.0.R")
+```
+
+read in participant data:
+
+```{r}
+data_file_path <- here("data")
+
+# file name as a string
+file_name <- "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, file_name)) %>%
+  data_file_reshape(., file_name)
+
+responses_dt$item_ID <- as.integer(responses_dt$item_ID)
+
+rm(data_file_path, file_name)
+```
+
+rename variables for ease of use with mplus:
+
+```{r}
+#the rdata function doesn't like my variable names; renaming:
+colnames(responses_dt) <- c(
+  #item and participant ID variables 
+  "subject_ID", "item_ID",
+  
+  #participant ratings
+  "y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10")
+```
+
+```{r}
+vars = names(responses_dt[,3:12]) 
+data = responses_dt
+
+models = lapply(setNames(vars, vars), function(var) {
+  form = paste(var, "~ (1|item_ID) + (1|subject_ID)")
+  lmer(form, data=data)
+})
+
+names(models) <- vars
+```
+
+```{r}
+extract_item_intercepts <- function(model) {
+  ranef <- ranef(model)
+  ranef <- ranef$item_ID
+  ranef <- rownames_to_column(ranef, "item_ID")
+  colnames(ranef) <- c("item_ID", "intercept")
+  return(ranef)
+}
+```
+
+```{r}
+item_intercepts <- lapply(models, extract_item_intercepts)
+```
+
+```{r}
+plot_hist <- function(intercept_df) {
+  intercept_df %>% ggplot(aes(intercept)) +
+    geom_histogram(bins=50)
+}
+```
+
+```{r}
+plots <- lapply(item_intercepts, plot_hist)
+```
+
+```{r}
+library(cowplot)
+
+cowplot::plot_grid(plotlist = plots)
+```
+
