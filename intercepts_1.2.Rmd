@@ -58,16 +58,6 @@ names(models) <- vars
 ```
 
 ```{r}
-#extract_item_intercepts <- function(model) {
-#  ranef <- ranef(model)
-#  ranef <- ranef$item_ID
-#  ranef <- rownames_to_column(ranef, "item_ID")
-#  colnames(ranef) <- c("item_ID", "intercept")
-#  return(ranef)
-#}
-```
-
-```{r}
 extract_intercepts <- function(model, parameter) {
   
   ranef <- ranef(model)
@@ -107,11 +97,10 @@ plot_hist <- function(intercept_df) {
 ```{r}
 item_plots <- lapply(item_intercepts, plot_hist)
 subject_plots <- lapply(subject_intercepts, plot_hist)
+plots <- c(item_plots, subject_plots)
 ```
 
 ```{r}
-
-
 cowplot::plot_grid(plotlist = plots)
 ```
 
