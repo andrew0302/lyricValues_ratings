@@ -4,6 +4,7 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
+First look at responses, confirming if they're legit. 
 
 ```{r setup, include=FALSE}
 library('data.table') # data manipulation

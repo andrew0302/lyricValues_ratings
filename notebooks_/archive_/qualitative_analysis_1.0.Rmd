@@ -1,0 +1,62 @@
+---
+title: "qualitative_analysis"
+author: "andrew demetriou"
+date: "12/26/2021"
+---
+
+Looking at subjectivity and confidence in the ratings. 
+
+```{r}
+library('data.table') # data manipulation
+library('dplyr')      # data manipulation
+library('here')       # file logistics
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+
+# remove junk on first two rows
+responses_dt <- responses_dt[3:.N]
+```
+
+```{r}
+feedback <- responses_dt[,'feedback']
+feedback <- feedback[feedback != ""]
+```
+
+
+```{r}
+subjectivity <- responses_dt[,'subjective']
+```
+
+
+```{r}
+# convert worded ratings to numbers
+subjectivity[subjectivity == "Completely objective"] <- 1
+subjectivity[subjectivity == "Very objective"] <- 2
+subjectivity[subjectivity == "Somewhat objective"] <- 3
+subjectivity[subjectivity == "Neither subjective nor objective"] <- 4
+subjectivity[subjectivity == "Somewhat subjective"] <- 5
+subjectivity[subjectivity == "Very subjective"] <- 6
+subjectivity[subjectivity == "Completely subjective"] <- 7
+```
+
+```{r}
+hist(as.numeric(subjectivity$subjective))
+
+subjectivity$subjective %>% as.numeric() %>% range(na.rm=TRUE)
+subjectivity$subjective %>% as.numeric() %>% mean(na.rm=TRUE)
+subjectivity$subjective %>% as.numeric() %>% sd(na.rm=TRUE)
+```
+```{r}
+# select columns to keep: '-c' indicates the confidence ratings
+confidence_ratings <- grepl("-r", colnames(responses_dt))
+
+# remove junk on first two rows
+confidence_dt <- responses_dt[,..confidence_ratings]#[3:.N]
+```
+

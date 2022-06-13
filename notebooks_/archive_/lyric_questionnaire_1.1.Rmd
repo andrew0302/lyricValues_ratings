@@ -1,0 +1,246 @@
+---
+title: "lyric_questionnaire"
+author: "andrew demetriou"
+date: "11/29/2021"
+---
+
+A classical test theory approach to analyzing the reliability of the lyric questionnaire. 
+
+```{r setup, include=FALSE}
+library('data.table') # data manipulation
+library('dplyr')      # data manipulation
+library('here')       # file logistics
+library('corrplot')   # visualization
+library('Hmisc')      # visualization
+library("ggplot2")    # visualization
+library('psych')      # factor analysis and reliability
+library('shiny')      # interactive visualization
+```
+
+```{r}
+# path with the actual data
+data_file_path <- here("data")
+
+# create a list with all of the files
+data_files <- list.files(data_file_path)
+
+# read in qualtrics data file
+responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_November 28, 2021_07.51.csv"))
+
+# remove junk on first two rows
+responses_dt <- responses_dt[3:.N]
+
+# get question wording:
+questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+
+# working data table
+working_dt <- responses_dt[`Participant Consent`=='agree', ]
+
+rm(data_file_path, data_files, responses_dt)
+```
+
+Participant suggested lyric preference activities:
+
+```{r}
+lyric_activities_columns <- c("Lyric Activities_1", "Lyric Activities_2", "Lyric Activities_3", "Lyric Activities_4", "Lyric Activities_5")
+
+lyric_activities <- working_dt[, ..lyric_activities_columns] 
+lyric_activities$`Lyric Activities_1`[lyric_activities$`Lyric Activities_1`=='']<-NA
+lyric_activities <- lyric_activities[!is.na(lyric_activities$`Lyric Activities_1`)]
+
+lyric_activities
+```
+
+
+
+```{r}
+#names of lyric preferences columns for subsetting
+lyric_column_names <- c(
+  "Lyric_preferences_1","Lyric_preferences_2","Lyric_preferences_3",
+  "Lyric_preferences_4","Lyric_preferences_5","Lyric_preferences_6",
+  "Lyric_preferences_7", "Lyric_preferences_8", "Lyric_preferences_9", "Lyric_percentage_1")
+
+#subset data table
+lyrics_preferences_dt <- working_dt[, lyric_column_names, with=FALSE]
+
+#converts each possible response into numbers for a given column
+to_numbers <- function(x) {
+  if(x ==  "Strongly disagree"){x = as.numeric(1)
+  } else if (x== "Somewhat disagree"){x = as.numeric(2)
+  } else if (x== "Neither agree nor disagree"){x = as.numeric(3)
+  } else if (x=="Somewhat agree"){x = as.numeric(4)
+  } else if (x=="Strongly agree"){x = as.numeric(5)
+  } else {x = NA}
+}
+
+#execute recode function on relevant rows
+lyrics_preferences_dt <- lyrics_preferences_dt[, .(
+  L1 = lapply(Lyric_preferences_1, to_numbers), 
+  L2 = lapply(Lyric_preferences_2, to_numbers), 
+  L3 = lapply(Lyric_preferences_3, to_numbers),
+  L4 = lapply(Lyric_preferences_4, to_numbers), 
+  L5 = lapply(Lyric_preferences_5, to_numbers), 
+  L6 = lapply(Lyric_preferences_6, to_numbers), 
+  L7 = lapply(Lyric_preferences_7, to_numbers),
+  L8 = lapply(Lyric_preferences_8, to_numbers),
+  L9 = lapply(Lyric_preferences_9, to_numbers),
+  L10 = Lyric_percentage_1)][, lapply(.SD, as.numeric)]
+
+#reverse codes question L2
+lyrics_preferences_dt$L2 <- 6-lyrics_preferences_dt$L2
+```
+
+```{r}
+#extract actual wording of questions
+lyrics_questions <- questions[20:29]
+
+#deletes repeated text
+lyrics_questions <- gsub("Please indicate how much you agree with the following statements about your music preferences: - ", "", lyrics_questions)
+
+#print questions
+lyrics_questions
+
+all_lyrics_questions <- lapply(lyrics_questions, function(x) paste0(x, "\n")) 
+all_lyrics_questions <- paste(all_lyrics_questions, collapse = " ")
+```
+
+```{r}
+#estimate p values for each correlation in a matrix
+cor.mtest <- function(mat, ...) {
+    mat <- as.matrix(mat)
+    n <- ncol(mat)
+    p.mat<- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    for (i in 1:(n - 1)) {
+        for (j in (i + 1):n) {
+            tmp <- cor.test(mat[, i], mat[, j], ...)
+            p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        }
+    }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+```
+
+```{r}
+#ensure that only complete cases are included
+corrplot_dt <- lyrics_preferences_dt[complete.cases(lyrics_preferences_dt),]
+
+#print a histogram of each variable
+hist.data.frame(corrplot_dt)
+```
+
+```{r}
+histogram_plot_function <- function(column){
+  ggplot(corrplot_dt, aes(x=column)) +
+    geom_histogram(bins=30) +
+    scale_y_continuous(limits = c(0,300)) +
+    labs(paste0("Histogram of", column))
+}
+
+list_of_histograms <- lapply(corrplot_dt, histogram_plot_function)
+```
+
+
+```{r}
+#estimate p values for all variables
+p.mat <- cor.mtest(corrplot_dt)
+corrplot(cor(corrplot_dt), method = "color", type = 'lower', diag=FALSE, addCoef.col	
+="black", p.mat = p.mat, sig.level=0.05)
+```
+
+```{r}
+#compute principal components
+pca <- prcomp(corrplot_dt, scale = TRUE)
+ 
+# compute total variance
+variance = pca $sdev^2 / sum(pca $sdev^2)
+ 
+#scree plot
+qplot(c(1:10), variance) +
+  geom_line() +
+  geom_point(size=4)+
+  xlab("Principal Component") +
+  ylab("Variance Explained") +
+  ggtitle("Scree Plot") +
+  ylim(0, 1)
+```
+
+
+```{r}
+alpha(corrplot_dt)
+```
+
+```{r}
+#fa(corrplot_dt, rotate = "varimax", fm="ml")
+```
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Lyric Questions"),
+  
+  # drop down menu to display the values
+  numericInput('choice', 'select question number', value=1, min=1, step=1, max=10), 
+  
+  # print out specific question
+  uiOutput('question_text'),
+  
+  #plot histogram of question responses
+  plotOutput('histogram'),
+  
+  # print out all lyrics questions
+  verbatimTextOutput('all_questions'),
+  
+  #correlation plot
+  plotOutput('corrplot')
+)
+
+server <- function(input, output, session){
+  
+  # retrieve input list element
+  output$question_text <- renderUI(lyrics_questions[input$choice])
+  
+  # show complete list
+  output$all_questions <- renderText(all_lyrics_questions)
+  
+  # plot input item histogram
+  output$histogram <- renderPlot({
+  list_of_histograms[input$choice] 
+  })
+  
+  # correlation plot of lyrics responses
+  output$corrplot <- renderPlot({
+    corrplot(cor(corrplot_dt), method = "color", type = 'lower', diag=FALSE, addCoef.col	
+="black", p.mat = p.mat, sig.level=0.05)
+  })
+  
+  
+}
+shinyApp(ui=ui, server=server)
+```
+
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Lyric Item Suggestions"),
+  
+  # print out all lyrics questions
+  verbatimTextOutput('all_questions'),
+  
+  #correlation plot
+  DT::DTOutput('suggestions')
+
+  )
+
+server <- function(input, output, session){
+  
+  # show complete list
+  output$all_questions <- renderText(all_lyrics_questions)
+  
+  # show interactive table of suggestions
+  output$suggestions <- renderDataTable(lyric_activities)
+  
+}
+shinyApp(ui=ui, server=server)
+```
+

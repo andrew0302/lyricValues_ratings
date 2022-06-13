@@ -4,6 +4,8 @@ author: "andrew demetriou"
 date: "12/26/2021"
 ---
 
+Looking at subjectivity and confidence in the ratings. 
+
 ```{r}
 library('data.table') # data manipulation
 library('dplyr')      # data manipulation
@@ -45,6 +47,10 @@ subjectivity[subjectivity == "Completely subjective"] <- 7
 
 ```{r}
 hist(as.numeric(subjectivity$subjective))
+
+subjectivity$subjective %>% as.numeric() %>% range(na.rm=TRUE)
+subjectivity$subjective %>% as.numeric() %>% mean(na.rm=TRUE)
+subjectivity$subjective %>% as.numeric() %>% sd(na.rm=TRUE)
 ```
 ```{r}
 # select columns to keep: '-c' indicates the confidence ratings

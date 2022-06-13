@@ -4,6 +4,7 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
+A classical test theory approach to analyzing the reliability of the lyric questionnaire. 
 
 ```{r setup, include=FALSE}
 library('data.table') # data manipulation
@@ -31,12 +32,14 @@ responses_dt <- responses_dt[3:.N]
 
 # get question wording:
 questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
-```
 
-
-```{r}
+# working data table
 working_dt <- responses_dt[`Participant Consent`=='agree', ]
+
+rm(data_file_path, data_files, responses_dt)
 ```
+
+Participant suggested lyric preference activities:
 
 ```{r}
 lyric_activities_columns <- c("Lyric Activities_1", "Lyric Activities_2", "Lyric Activities_3", "Lyric Activities_4", "Lyric Activities_5")
@@ -44,6 +47,8 @@ lyric_activities_columns <- c("Lyric Activities_1", "Lyric Activities_2", "Lyric
 lyric_activities <- working_dt[, ..lyric_activities_columns] 
 lyric_activities$`Lyric Activities_1`[lyric_activities$`Lyric Activities_1`=='']<-NA
 lyric_activities <- lyric_activities[!is.na(lyric_activities$`Lyric Activities_1`)]
+
+lyric_activities
 ```
 
 
