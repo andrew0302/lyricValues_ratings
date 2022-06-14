@@ -4,7 +4,7 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
-A classical test theory approach to analyzing the reliability of the lyric questionnaire. 
+An item response theory theory approach to analyzing the reliability of the lyric questionnaire. 
 
 ```{r setup, include=FALSE}
 library('data.table') # data manipulation
@@ -104,8 +104,8 @@ a is the slope: "A slope parameter is a measure of how well an item differentiat
 "Three location parameters (b-parameters) also are listed for each item. Location parameters are interpreted as the value of theta that corresponds to a .5 probability of responding at or above that location on an item. There are m-1 location parameters where m refers to the number of response categories on the response scale."
 
 ```{r}
-IRT_parms <- coef(mod, IRTpars = TRUE, simplify = TRUE)
-IRT_parms$items
+IRT_params <- coef(mod, IRTpars = TRUE, simplify = TRUE)
+IRT_params$items
 ```
 "Factor loadings can be interpreted as a strength of the relationship between an item and the latent variable (F1). The Communalities (h2) are squared factor loadings and are interpreted as the variance accounted for in an item by the latent trait. All of the items had a substantive relationship (loadings > .50) with the latent trait."
 
@@ -122,10 +122,38 @@ plot(mod, type='trace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_items=T,
      main = "")
 ```
 
+"In polytomous models, the amount of information an item contributes depends on its slope parameter—–the larger the parameter, the more information the item provides."
+
+"These curves show that item information is not a static quantity, rather, it is conditional on levels of theta. ...the lowest slope...the least informative item"
+
 ```{r}
 plot(mod, type='infotrace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_items=T, 
      as.table = TRUE, auto.key=list(points=F, lines=T, columns=4, space = 'top', cex = .8), 
               theta_lim = c(-3, 3), 
      main = "")
+```
+"The solid blue line represents the scale information function. The overall scale provided the most information in the range -2.5 to + 1. The red line provides a visual reference about how estimate precision varies across theta with smaller values corresponding to better estimate precision."
+
+This suggests that our scale was better at measuring low occurences of the trait, rather than high occurences. 
+
+```{r}
+plot(mod, type = 'infoSE', theta_lim = c(-3, 3), 
+     main="")
+```
+"This curve is mathematically related to both scale information and conditional standard errors through simple transformations. Because of this relationship, score estimates are most reliable in the -2.5 to + 1 theta range."
+
+
+```{r}
+plot(mod, type = 'rxx', theta_lim = c(-3, 3), 
+     main="" )
+```
+This is a single reliability estimate:
+
+```{r}
+marginal_rxx(mod)
+```
+
+```{r}
+plot(mod, type = 'score', theta_lim = c(-3, 3), main = "")
 ```
 
