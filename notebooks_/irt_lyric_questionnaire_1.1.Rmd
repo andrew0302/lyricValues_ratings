@@ -30,7 +30,7 @@ responses_dt <- fread(here(data_file_path, "annotation_number_estimation _2.2_No
 responses_dt <- responses_dt[3:.N]
 
 # get question wording:
-#questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
 
 # working data table
 working_dt <- responses_dt[`Participant Consent`=='agree', ]
@@ -81,9 +81,25 @@ lyrics_preferences_dt$L2 <- 6-lyrics_preferences_dt$L2
 rm(working_dt, lyric_column_names, to_numbers)
 ```
 
+```{r}
+#extract actual wording of questions
+lyrics_questions <- questions[20:29]
+
+#deletes repeated text
+lyrics_questions <- gsub("Please indicate how much you agree with the following statements about your music preferences: - ", "", lyrics_questions)
+
+#print questions
+lyrics_questions
+
+all_lyrics_questions <- lapply(lyrics_questions, function(x) paste0(x, "\n")) 
+all_lyrics_questions <- paste(all_lyrics_questions, collapse = " ")
+```
+
 As per https://bookdown.org/bean_jerry/using_r_for_social_work_research/item-response-theory.html:
 
-RMSEA <= .06 and SRMSR <= .08 suggest good fit. This model has poor fit
+RMSEA <= .06 and SRMSR <= .08 suggest good fit. 
+
+This model overall has poor fit
 
 ```{r}
 #estimate model
@@ -94,6 +110,8 @@ M2(mod, type = "C2", calcNULL = FALSE)
 ```
 
 "The mirt implementation of S-X2 computes an RMSEA value which can be used to assess degree of item fit. Values less than .06 are considered evidence of adequate fit."
+
+It appears the model fits all the items well. 
 
 ```{r}
 itemfit(mod)
@@ -112,8 +130,9 @@ IRT_params$items
 ```{r}
 summary(mod)
 ```
-"...the probabilities of responding to specific categories in an item’s response scale...are graphically displayed in the category response curves (CRCs)"
+Category characteristic curves:
 
+"...the probabilities of responding to specific categories in an item’s response scale...are graphically displayed in the category response curves (CRCs)"
 
 ```{r}
 plot(mod, type='trace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_items=T, 
@@ -122,9 +141,13 @@ plot(mod, type='trace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_items=T,
      main = "")
 ```
 
+Item information curves:
+
 "In polytomous models, the amount of information an item contributes depends on its slope parameter—–the larger the parameter, the more information the item provides."
 
 "These curves show that item information is not a static quantity, rather, it is conditional on levels of theta. ...the lowest slope...the least informative item"
+
+These curves indicate that items 3, 4, 6, and 8 contain information about the latent trait, whereas the others do not. 
 
 ```{r}
 plot(mod, type='infotrace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_items=T, 
@@ -132,14 +155,20 @@ plot(mod, type='infotrace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_item
               theta_lim = c(-3, 3), 
      main = "")
 ```
+
+Scale information and conditional standard errors:
+
 "The solid blue line represents the scale information function. The overall scale provided the most information in the range -2.5 to + 1. The red line provides a visual reference about how estimate precision varies across theta with smaller values corresponding to better estimate precision."
 
-This suggests that our scale was better at measuring low occurences of the trait, rather than high occurences. 
+This suggests that our scale was better at measuring low occurrences of the trait, rather than high occurrences. 
 
 ```{r}
 plot(mod, type = 'infoSE', theta_lim = c(-3, 3), 
      main="")
 ```
+
+Conditional reliability:
+
 "This curve is mathematically related to both scale information and conditional standard errors through simple transformations. Because of this relationship, score estimates are most reliable in the -2.5 to + 1 theta range."
 
 
@@ -152,6 +181,15 @@ This is a single reliability estimate:
 ```{r}
 marginal_rxx(mod)
 ```
+
+Scale characteristic curve:
+
+"...use model parameters to generate estimates of...theta scores"
+"...person parameters in IRT...factor scores in CFA..."
+
+"...the estimates are in the theta (standard normal) metric so they are z-like scores...For example, someone with a theta score of 1.0 is one standard deviation above average and we can expect that 84% of the sample to have lower scores and 16% to have higher scores."
+
+"A scale characteristic function provides a means of transforming estimated theta scores to expected true scores in the original scale metric."
 
 ```{r}
 plot(mod, type = 'score', theta_lim = c(-3, 3), main = "")
