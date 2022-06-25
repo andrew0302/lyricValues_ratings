@@ -4,6 +4,8 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
+Number of Rater Estimation:
+
 An item response theory theory approach to analyzing the reliability of the lyric questionnaire. 
 
 ```{r setup, include=FALSE}
@@ -102,11 +104,21 @@ RMSEA <= .06 and SRMSR <= .08 suggest good fit.
 This model overall has poor fit
 
 ```{r}
-#estimate model
-mod <- (mirt(lyrics_preferences_dt, 1, verbose = FALSE, itemtype = 'graded', SE = TRUE))
+#estimate Graded Response model (GRM)
+mod_1 <- (mirt(lyrics_preferences_dt, 1, verbose = FALSE, itemtype = 'graded', SE = TRUE))
 
 #model fit for response models with ordinal data
-M2(mod, type = "C2", calcNULL = FALSE)
+M2(mod_1, type = "C2", calcNULL = FALSE)
+
+
+#estimate Generalized Partial Credit Model
+mod_2 <- (mirt(lyrics_preferences_dt, 1, verbose = FALSE, itemtype = 'gpcm', SE = TRUE))
+
+#model fit
+M2(mod_2, type = "C2", calcNULL = FALSE)
+
+mod <- mod_1
+rm(mod_1, mod_2)
 ```
 
 "The mirt implementation of S-X2 computes an RMSEA value which can be used to assess degree of item fit. Values less than .06 are considered evidence of adequate fit."
@@ -131,6 +143,7 @@ IRT_params$items
 summary(mod)
 ```
 Category characteristic curves:
+Item characteristic curves:
 
 "...the probabilities of responding to specific categories in an item’s response scale...are graphically displayed in the category response curves (CRCs)"
 
@@ -156,7 +169,7 @@ plot(mod, type='infotrace', which.item = c(1,2,3,4,5,6, 7, 8, 9, 10), facet_item
      main = "")
 ```
 
-Scale information and conditional standard errors:
+Scale information / test infomation and conditional standard errors:
 
 "The solid blue line represents the scale information function. The overall scale provided the most information in the range -2.5 to + 1. The red line provides a visual reference about how estimate precision varies across theta with smaller values corresponding to better estimate precision."
 
@@ -192,6 +205,11 @@ Scale characteristic curve:
 "A scale characteristic function provides a means of transforming estimated theta scores to expected true scores in the original scale metric."
 
 ```{r}
-plot(mod, type = 'score', theta_lim = c(-3, 3), main = "")
+plot(mod, type = 'score', theta_lim = c(-3, 3), main = "")  
 ```
+
+```{r}
+personfit(mod)
+```
+
 

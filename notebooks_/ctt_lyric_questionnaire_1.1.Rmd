@@ -4,6 +4,8 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
+Number of Rater Estimation:
+
 A classical test theory approach to analyzing the reliability of the lyric questionnaire. 
 
 ```{r setup, include=FALSE}

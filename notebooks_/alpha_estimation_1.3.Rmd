@@ -14,7 +14,7 @@ library('shiny')      # interactive results
 library('DT')         # interactive table
 
 # organize qualtrics output
-source("data_file_re-shape_1.0.R")
+source(here("scripts_", "data_file_re-shape_1.0.R"))
 ```
 
 ```{r}
@@ -171,7 +171,7 @@ make_list_of_alpha_tibbles_dt <- function(
 
 ```{r}
 #save(list_of_alpha_tibbles, file = "list_of_alpha_tibbles.Rds")
-load("list_of_alpha_tibbles.Rds")
+load(here("intermediary_data_", "list_of_alpha_tibbles.Rds"))
 ```
 
 ```{r}

@@ -4,6 +4,8 @@ author: "andrew demetriou"
 date: "12/26/2021"
 ---
 
+Number of Rater Estimation:
+
 Looking at subjectivity and confidence in the ratings. 
 
 ```{r}
@@ -28,11 +30,9 @@ feedback <- responses_dt[,'feedback']
 feedback <- feedback[feedback != ""]
 ```
 
-
 ```{r}
 subjectivity <- responses_dt[,'subjective']
 ```
-
 
 ```{r}
 # convert worded ratings to numbers

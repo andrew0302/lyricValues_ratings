@@ -4,7 +4,13 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
-First look at responses, confirming if they're legit. 
+Number of Rater Estimation:
+
+This notebook is a first look at the responses, confirming if they're legit. 
+Prolific.co data is referenced in the notebook, but is not on Github. 
+
+Notebook first examines the time it took participants to complete the questionnaire, using data from both Prolific and Qualtrics. 
+Responses were closely examined when their durations were substantially longer than others, or if they had sent a message on the Prolific platform, indicating that something appeared to have gone wrong during the data collection process. 
 
 ```{r setup, include=FALSE}
 library('data.table') # data manipulation
@@ -36,17 +42,23 @@ complete_dt <- responses_dt[demogs_dt, on=.(PROLIFIC_PID), nomatch=0]
 
 # get question wording:
 questions <- colnames(fread(here(data_file_path, data_files[1]), skip=1))
+
+rm(data_file_path, data_files)
 ```
 
 ```{r}
 #create a dataframe to work with
+#506 participants finished
 finished_dt <- all_dt[Finished=='True', ]
 
 # 8 participants finished, and timed out
+# //this now shows 0 participants finished and timed out
 finished_timed_out_dt <- all_dt[status=='TIMED-OUT' & Finished=='True', ]
 
 # 9 participants did not finish, and timed out - perhaps found in partial responses
 unfinished_timed_out_dt <- all_dt[is.na(Finished) & status=='TIMED-OUT', ]
+
+rm(finished_timed_out_dt, unfinished_timed_out_dt)
 ```
 
 ```{r}

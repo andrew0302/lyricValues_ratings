@@ -5,6 +5,14 @@ date: "07/12/2021"
 ---
 
 
+Number of Raters Estimation:
+
+This notebook creates visualizations of results for individual items. 
+The two primary displays show:
+* Per Value distribution of ratings per song
+* Per Song distribution of ratings per value
+* Per Song distribution of ratings per value along with confidence ratings
+
 ```{r setup, include=FALSE}
 library('here')            # file logistics
 library('data.table')      # data manipulation
@@ -31,7 +39,7 @@ workers <- detectCores()-1
 future::plan(multisession, workers = workers)
 
 # organize qualtrics output
-source("data_file_re-shape_1.0.R")
+source(here("scripts_", "data_file_re-shape_1.0.R"))
 ```
 
 ```{r}

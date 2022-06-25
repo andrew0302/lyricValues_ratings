@@ -4,6 +4,10 @@ author: "andrew demetriou"
 date: "11/29/2021"
 ---
 
+Number of Rater Estimation:
+
+Examining the time taken for the intial lyrics questionnaire and per song:
+
 ```{r setup, include=FALSE}
 library('here')       # file logistics
 library('data.table') # data manipulation
